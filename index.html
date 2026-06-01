@@ -143,17 +143,28 @@
       gap: 12px;
     }
 
-    /* Slider de recorte vertical da foto do slide 4 (object-position Y). */
-    .crop-row {
+    /* Slider de recorte vertical (background-position Y) das fotos dos
+       slides 1 e 4. Fica abaixo de cada card no grid, não no topo. */
+    .slide-crop {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ui-muted);
     }
 
-    .crop-row input[type="range"] {
+    .slide-crop input[type="range"] {
       flex: 1;
       accent-color: var(--accent);
       cursor: pointer;
+    }
+
+    .slide-crop .crop-val {
+      color: var(--off-white);
+      letter-spacing: 0.08em;
     }
 
     input[type="color"] {
@@ -558,13 +569,19 @@
       background: var(--black);
     }
 
+    /* Capa via background-image (não <img>): mesma razão do slide 4 —
+       background-size:cover é fiel no export do html2canvas, object-fit
+       em <img> é esticado. Recorte vertical via background-position. */
     .slide-1 .cover-img {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 860px;
-      object-fit: cover;
+      background-color: #050505;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center 50%;
       z-index: 1;
     }
 
@@ -906,6 +923,11 @@
        Gradiente de escurecimento via ::after na faixa superior garante
        legibilidade do número/label sobre a imagem (decai 70%→0 antes
        do centro vertical). */
+    /* Foto via background-image (não <img>): background-size:cover é
+       renderizado fiel pelo html2canvas 1.4.1, enquanto object-fit:cover
+       em <img> é esticado no export (achata a foto). O recorte vertical
+       vem de background-position, controlado pelo slider. Longhands em vez
+       do shorthand `background` pra não resetar size/position/image. */
     .slide-curio .curio-photo {
       position: absolute;
       top: 230px;
@@ -913,24 +935,28 @@
       right: 60px;
       height: 430px;
       overflow: hidden;
-      background: #050505;
+      background-color: #050505;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center 50%;
       z-index: 1;
     }
 
+    /* Fade nas quatro bordas: dissolve a foto no preto do fundo (#0A0A0A).
+       Topo mais longo (também garante leitura do número/label sobre a foto);
+       base e laterais mais curtos pra não comer o centro da imagem. Quatro
+       camadas de gradiente compostas — html2canvas 1.4.1 renderiza fiel. */
     .slide-curio .curio-photo::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(10, 10, 10, 0.7) 0%, rgba(10, 10, 10, 0) 50%);
+      background:
+        linear-gradient(180deg, rgba(10, 10, 10, 0.7) 0%, rgba(10, 10, 10, 0) 50%),
+        linear-gradient(0deg, rgba(10, 10, 10, 0.85) 0%, rgba(10, 10, 10, 0) 28%),
+        linear-gradient(90deg, rgba(10, 10, 10, 0.85) 0%, rgba(10, 10, 10, 0) 13%),
+        linear-gradient(270deg, rgba(10, 10, 10, 0.85) 0%, rgba(10, 10, 10, 0) 13%);
       pointer-events: none;
       z-index: 2;
-    }
-
-    .slide-curio .curio-photo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
     }
 
     /* Waveform: assinatura. Mesma posição/altura/cor em todo slide de
@@ -1181,8 +1207,8 @@
 
       input[type="color"] { width: 48px; height: 38px; }
 
-      /* Slider de recorte com track mais alto pra arrastar com dedo. */
-      .crop-row input[type="range"] { height: 32px; }
+      /* Slider de recorte por card com track mais alto pra arrastar com dedo. */
+      .slide-crop input[type="range"] { height: 32px; }
     }
 
     @media (max-width: 480px) {
@@ -1236,14 +1262,6 @@
         <div class="control-group">
           <label>Foto do slide 4 (curiosidade) — opcional, fallback: capa</label>
           <input type="file" id="curio-file" accept="image/*">
-        </div>
-
-        <div class="control-group">
-          <label>Recorte vertical da foto do slide 4</label>
-          <div class="crop-row">
-            <input type="range" id="curio-y" min="0" max="100" step="1" value="50">
-            <span class="hex-display" id="curio-y-display">50%</span>
-          </div>
         </div>
 
         <div class="control-group">
@@ -1320,8 +1338,6 @@
       waveGen: document.getElementById('wave-gen'),
       waveStatus: document.getElementById('wave-status'),
       wavePreview: document.getElementById('wave-preview'),
-      curioY: document.getElementById('curio-y'),
-      curioYDisplay: document.getElementById('curio-y-display'),
     };
 
     const state = {
@@ -1334,7 +1350,8 @@
       curioImage: null,           // HTMLImageElement da foto do slide 4 (opcional)
       curioDataUrl: null,
       curioDuotoneDataUrl: null,  // duotone da foto (ou da capa, no fallback)
-      curioPhotoY: 50,            // object-position Y (%): 0=topo, 50=centro, 100=baixo
+      coverPhotoY: 50,            // recorte vertical (%) da capa do slide 1: 0=topo, 50=centro, 100=baixo
+      curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
       isFollowerSuggestion: false,
       suggestionNumber: null,
@@ -1646,6 +1663,26 @@
       return j.waveform;
     }
 
+    /* Faz polling do /progress enquanto o /waveform roda (uma request longa).
+       Chama onUpdate({stage, pct}) a cada ~500ms. Devolve uma função stop()
+       que encerra o polling — chamar sempre no finally do consumidor. */
+    function startProgressPoll(url, onUpdate) {
+      let stopped = false;
+      let timer = null;
+      const tick = async () => {
+        if (stopped) return;
+        try {
+          const u = new URL(`${BACKEND_URL}/progress`);
+          u.searchParams.set('url', url);
+          const res = await fetch(u);
+          if (res.ok) onUpdate(await res.json());
+        } catch { /* ignora; é só feedback visual */ }
+        if (!stopped) timer = setTimeout(tick, 500);
+      };
+      tick();
+      return () => { stopped = true; if (timer) clearTimeout(timer); };
+    }
+
     /* Barras simétricas em torno do eixo central (align-items:center faz crescer
        pra cima e pra baixo). Opacidade 0.45→1.0 conforme amplitude dá profundidade.
        Altura da faixa = 64px; barra mínima de 2px pra silêncio não sumir. */
@@ -1662,8 +1699,10 @@
     function buildCuriositySlide(d) {
       const c = d.slides.curiosity;
       const photo = state.curioDuotoneDataUrl || state.duotoneDataUrl;
-      const objPos = `object-position: center ${state.curioPhotoY}%;`;
-      const media = `<div class="curio-photo">${photo ? `<img src="${photo}" crossorigin="anonymous" style="${objPos}">` : ''}</div>`;
+      const photoStyle = photo
+        ? `background-image:url('${photo}');background-position:center ${state.curioPhotoY}%;`
+        : '';
+      const media = `<div class="curio-photo" style="${photoStyle}"></div>`;
 
       return `
     <div class="slide slide-curio" style="${slideStyleVars(3)}">
@@ -1714,7 +1753,7 @@
         <span>${escapeHtml(String(d.year))}</span>
       </div>`;
 
-      const bgMarkup = `<img class="cover-img" src="${state.duotoneDataUrl}" crossorigin="anonymous">
+      const bgMarkup = `<div class="cover-img" style="background-image:url('${state.duotoneDataUrl}');background-position:center ${state.coverPhotoY}%;"></div>
       <div class="cover-fade"></div>`;
 
       return `
@@ -1822,6 +1861,14 @@
       els.slidesContainer.innerHTML = `<div class="slides-grid">` + slidesHtml.map((html, i) => {
         const override = state.quoteColors[i];
         const pickerColor = override || state.accent;
+        // Recorte vertical: só os slides com foto (1 = capa, 4 = curiosidade).
+        const cropY = i === 0 ? state.coverPhotoY : (i === 3 ? state.curioPhotoY : null);
+        const cropControl = cropY !== null ? `
+      <div class="slide-crop">
+        <label>recorte vertical</label>
+        <input type="range" data-crop-i="${i}" min="0" max="100" step="1" value="${cropY}">
+        <span class="crop-val">${cropY}%</span>
+      </div>` : '';
         return `
     <div class="slide-card">
       <div class="slide-preview-wrapper">
@@ -1840,6 +1887,7 @@
           <button class="ghost small" data-i="${i}" type="button">baixar png</button>
         </div>
       </div>
+      ${cropControl}
     </div>
   `;
       }).join('') + `</div>`;
@@ -1902,7 +1950,6 @@
           return;
         }
       } catch (e) {
-        // usuário cancelou share ou API indisponível — cai pro fallback
         if (e && e.name === 'AbortError') return;
       }
       if (isIOS()) {
@@ -2014,15 +2061,23 @@
       }
     });
 
-    /* Recorte vertical da foto do slide 4. Atualiza object-position direto
-       nas <img> do preview e do stage offscreen sem re-renderizar — feedback
-       em tempo real conforme o usuário arrasta o slider. */
-    els.curioY.addEventListener('input', (e) => {
-      const v = parseInt(e.target.value, 10);
-      state.curioPhotoY = v;
-      els.curioYDisplay.textContent = v + '%';
-      document.querySelectorAll('.slide-curio .curio-photo img').forEach(img => {
-        img.style.objectPosition = `center ${v}%`;
+    /* Recorte vertical das fotos (slide 1 = capa, slide 4 = curiosidade).
+       Sliders ficam abaixo de cada card e são recriados a cada renderAll,
+       então o listener é delegado. Atualiza background-position direto no
+       preview e no stage offscreen, sem re-renderizar — feedback em tempo
+       real conforme o usuário arrasta. */
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!(t && t.matches && t.matches('input[data-crop-i]'))) return;
+      const i = parseInt(t.dataset.cropI, 10);
+      const v = parseInt(t.value, 10);
+      if (i === 0) state.coverPhotoY = v;
+      else if (i === 3) state.curioPhotoY = v;
+      const valEl = t.parentElement.querySelector('.crop-val');
+      if (valEl) valEl.textContent = v + '%';
+      const sel = i === 0 ? '.slide-1 .cover-img' : '.slide-curio .curio-photo';
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.style.backgroundImage) el.style.backgroundPosition = `center ${v}%`;
       });
     });
 
@@ -2154,11 +2209,16 @@
         const orig = els.generate.textContent;
         els.generate.disabled = true;
         els.generate.textContent = 'extraindo waveform…';
+        const stopPoll = startProgressPoll(cur.youtube_url, (p) => {
+          if (p.stage === 'download') els.generate.textContent = `waveform ${Math.round(p.pct)}%`;
+          else if (p.stage === 'process') els.generate.textContent = 'waveform: processando…';
+        });
         try {
           wf = await fetchWaveform(cur.youtube_url);
         } catch (err) {
           showMsg('waveform falhou: ' + err.message + ' — usando aleatória', 'error');
         } finally {
+          stopPoll();
           els.generate.textContent = orig;
           els.generate.disabled = false;
         }
@@ -2242,9 +2302,20 @@
 
       els.waveGen.disabled = true;
       const orig = els.waveGen.textContent;
-      els.waveGen.textContent = 'extraindo…';
-      els.waveStatus.textContent = 'servidor: baixando áudio e calculando picos…';
+      els.waveGen.textContent = 'iniciando…';
+      els.waveStatus.textContent = 'servidor: preparando download…';
       els.waveStatus.className = 'wave-status busy';
+
+      const stopPoll = startProgressPoll(url, (p) => {
+        if (p.stage === 'download') {
+          const pct = Math.round(p.pct);
+          els.waveGen.textContent = pct + '%';
+          els.waveStatus.textContent = `baixando áudio… ${pct}%`;
+        } else if (p.stage === 'process') {
+          els.waveGen.textContent = 'processando…';
+          els.waveStatus.textContent = 'extraindo os 56 picos…';
+        }
+      });
 
       try {
         const wf = await fetchWaveform(url);
@@ -2255,6 +2326,7 @@
       } catch (e) {
         showMsg('waveform falhou: ' + e.message, 'error');
       } finally {
+        stopPoll();
         els.waveGen.disabled = false;
         els.waveGen.textContent = orig;
         updateWaveStatus();
