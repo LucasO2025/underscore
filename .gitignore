@@ -22,3 +22,9 @@ desktop.ini
 
 # Cache temporário do projeto (waveforms baixados)
 underscore_video_cache/
+
+# Material editorial privado — mantido local, não vai pro repo público
+PRD.md
+SPEC.md
+SKILL.md
+CLAUDE.md
