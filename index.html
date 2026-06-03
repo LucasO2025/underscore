@@ -371,14 +371,13 @@
       overflow: hidden;
       position: relative;
       background: #050505;
-      container-type: inline-size;
     }
 
     .slide-scale {
       transform-origin: top left;
       width: 1080px;
       height: 1350px;
-      transform: scale(calc(100cqw / 1080));
+      transform: scale(0.352); /* 380 / 1080 — combina com a largura do card no grid */
     }
 
     .slide-actions {
@@ -1199,18 +1198,51 @@
       .action-bar { flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
       .action-bar button { flex: 1 1 auto; }
 
-      .slides-grid { grid-template-columns: 1fr; gap: 24px; }
+      .slides-grid { grid-template-columns: 1fr; gap: 28px; }
 
-      .slide-actions { flex-wrap: wrap; gap: 8px; }
-      .slide-actions-right { flex-wrap: wrap; }
+      /* Preview compacto: cabe na tela junto com o slider e os botões,
+         então dá pra arrastar o recorte vendo o resultado sem rolar. */
+      .slide-preview-wrapper {
+        max-width: 280px;
+        container-type: inline-size;
+      }
+      .slide-scale {
+        transform: scale(calc(100cqw / 1080));
+      }
+
+      /* Slider de recorte sobe pra logo abaixo do preview (antes do
+         color picker e do baixar png). */
+      .slide-crop { order: -1; }
+
+      /* Cabeçalho do card (label slide + ações à direita) empilhado e
+         com alvos de toque maiores. */
+      .slide-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+      .slide-actions > span { font-size: 0.72rem; }
+      .slide-actions-right {
+        width: 100%;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .slide-actions-right .ghost.small {
+        flex: 1;
+        padding: 14px 16px;
+        font-size: 0.7rem;
+      }
+      .quote-picker { padding: 10px 12px; }
+      .quote-picker input[type="color"] { width: 28px; height: 28px; }
 
       .palette-swatches { gap: 6px; }
       .swatch { padding: 8px 10px; }
 
       input[type="color"] { width: 48px; height: 38px; }
 
-      /* Slider de recorte por card com track mais alto pra arrastar com dedo. */
-      .slide-crop input[type="range"] { height: 32px; }
+      /* Slider de recorte mais alto pra arrastar com dedo. */
+      .slide-crop input[type="range"] { height: 44px; }
     }
 
     @media (max-width: 480px) {
