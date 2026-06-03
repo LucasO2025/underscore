@@ -1201,14 +1201,10 @@
       .slides-grid { grid-template-columns: 1fr; gap: 28px; }
 
       /* Preview compacto: cabe na tela junto com o slider e os botões,
-         então dá pra arrastar o recorte vendo o resultado sem rolar. */
-      .slide-preview-wrapper {
-        max-width: 280px;
-        container-type: inline-size;
-      }
-      .slide-scale {
-        transform: scale(calc(100cqw / 1080));
-      }
+         então dá pra arrastar o recorte vendo o resultado sem rolar.
+         Scale fixo (280/1080) pra mostrar o slide inteiro sem cortar. */
+      .slide-preview-wrapper { max-width: 280px; }
+      .slide-scale { transform: scale(0.26); }
 
       /* Slider de recorte sobe pra logo abaixo do preview (antes do
          color picker e do baixar png). */
