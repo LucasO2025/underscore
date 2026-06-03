@@ -43,6 +43,7 @@
       font-family: 'DM Sans', sans-serif;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     body {
@@ -370,12 +371,14 @@
       overflow: hidden;
       position: relative;
       background: #050505;
+      container-type: inline-size;
     }
 
     .slide-scale {
       transform-origin: top left;
       width: 1080px;
       height: 1350px;
+      transform: scale(calc(100cqw / 1080));
     }
 
     .slide-actions {
@@ -1188,8 +1191,7 @@
       textarea { min-height: 220px; font-size: 0.72rem; }
       textarea, input[type="text"], input[type="file"] { padding: 12px; }
 
-      .wave-controls { padding: 16px; margin-bottom: 20px; }
-      .wave-row { grid-template-columns: 1fr; gap: 8px; }
+      .wave-controls { display: none; }
 
       button { padding: 14px 18px; font-size: 0.7rem; letter-spacing: 0.18em; }
       button.small { padding: 10px 14px; font-size: 0.64rem; }
@@ -1854,10 +1856,8 @@
         `<div id="stage-slide-${i}" class="stage-slot">${html}</div>`
       ).join('');
 
-      // Grid de preview (escalado para caber no card)
-      const cardW = 380; // largura do card no grid
-      const scale = cardW / 1080;
-
+      // Grid de preview — escala é definida via container query no CSS
+      // (.slide-scale usa transform: scale(calc(100cqw / 1080))).
       els.slidesContainer.innerHTML = `<div class="slides-grid">` + slidesHtml.map((html, i) => {
         const override = state.quoteColors[i];
         const pickerColor = override || state.accent;
@@ -1872,7 +1872,7 @@
         return `
     <div class="slide-card">
       <div class="slide-preview-wrapper">
-        <div class="slide-scale" style="transform: scale(${scale});">
+        <div class="slide-scale">
           ${html}
         </div>
       </div>
