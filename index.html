@@ -1342,6 +1342,7 @@
   <div class="render-stage" id="render-stage"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script>
     /* =========================================================
@@ -2015,14 +2016,48 @@
       }
     }
 
+    function isMobileViewport() {
+      return window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    async function renderSlideBlob(i) {
+      const stageEl = document.getElementById('stage-slide-' + i);
+      if (!stageEl) return null;
+      const canvas = await html2canvas(stageEl.firstElementChild, {
+        width: 1080, height: 1350,
+        windowWidth: 1080, windowHeight: 1350,
+        scale: 1, useCORS: true, backgroundColor: null, logging: false,
+      });
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    /* No mobile, browsers bloqueiam múltiplos downloads programáticos em sequência —
+       só o primeiro <a download> dispara, os demais são descartados silenciosamente.
+       Solução: zipa os 5 PNGs e baixa em um único arquivo. No PC mantém o
+       comportamento original (5 PNGs separados). */
     async function downloadAllSlides() {
       els.downloadAll.disabled = true;
       const originalTxt = els.downloadAll.textContent;
       try {
-        for (let i = 0; i < 5; i++) {
-          els.downloadAll.textContent = `baixando ${i + 1}/5 (png)`;
-          await downloadSlide(i);
-          await new Promise(r => setTimeout(r, 350));
+        if (isMobileViewport() && typeof JSZip !== 'undefined') {
+          const zip = new JSZip();
+          for (let i = 0; i < 5; i++) {
+            els.downloadAll.textContent = `gerando ${i + 1}/5`;
+            const blob = await renderSlideBlob(i);
+            if (blob) zip.file(exportFilenameBase(i) + '.png', blob);
+          }
+          els.downloadAll.textContent = 'zipando…';
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const zipName = `underscore-${state.data.id}-${state.data.artist}-${state.data.song}`
+            .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.zip';
+          await saveBlob(zipBlob, zipName);
+        } else {
+          for (let i = 0; i < 5; i++) {
+            els.downloadAll.textContent = `baixando ${i + 1}/5 (png)`;
+            await downloadSlide(i);
+            await new Promise(r => setTimeout(r, 350));
+          }
         }
       } finally {
         els.downloadAll.textContent = originalTxt;
