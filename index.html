@@ -1938,20 +1938,9 @@
     }
 
     /* Salvar o PNG de forma adequada ao dispositivo:
-       1) Web Share API com files (iOS 15+, Android moderno) → menu nativo
-          (Salvar em Fotos, AirDrop, mensagens, etc.)
-       2) iOS sem share API → abre em nova aba, usuário faz "salvar imagem"
-       3) Desktop/Android antigo → download direto via <a download> */
+       1) iOS Safari ignora <a download> → abre em nova aba para long-press salvar
+       2) Desktop/Android → download direto via <a download> */
     async function saveBlob(blob, filename) {
-      try {
-        const file = new File([blob], filename, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file] });
-          return;
-        }
-      } catch (e) {
-        if (e && e.name === 'AbortError') return;
-      }
       if (isIOS()) {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
