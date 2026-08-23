@@ -2393,280 +2393,275 @@
     });
 
     /* =========================================================
-       REEL-ISCA — vídeo 9:16 (capa + hook animado, MUDO)
-       3 beats com corte seco, capa com zoom lento (Ken Burns),
-       grão sutil, fecho no card de capa do carrossel.
-       Grava em MP4 (fallback WebM). A MÚSICA entra depois, no
-       Instagram — por isso o vídeo sai sem áudio.
+       REEL-ISCA v2 — vídeo 9:16, direção B+C (serigrafia + tipografia cinética)
+       - capa ORIGINAL colorida, viva: pan + zoom contido + respiração + parallax
+       - grão fervendo por deslocamento (brilho constante, SEM flicker)
+       - blocos "ransom" analógicos: borda irregular orgânica + textura de papel
+       - cor híbrida: accent da capa; kraft/selo fixos; vermelho se a capa for neutra
+       - selo carimbado (selo.png do repo; fallback tipográfico)
+       - fecho: capa colorida + selo + CTA. Vídeo MUDO (música entra no Instagram).
 
-       Conteúdo dos beats:
-         - se o JSON tiver "reel": ["frase 1","frase 2","frase 3"],
-           cada frase vira um beat (na ordem).
-         - senão, o gerador divide o "hook" em frases (fallback).
-         - trechos entre *asteriscos* saem na cor de destaque.
+       JSON do beat: reel:{beats:[{text,emphasis}]}  (emphasis vira o bloco)
+       Retrocompat: reel:["frase",...] ou, sem reel, divide o hook em frases.
        ========================================================= */
-    const REEL = {
-      W: 1080, H: 1920, FPS: 30,
-      BEAT_IN: 0.35,    // fade-in de cada beat (s)
-      BEAT_HOLD: 1.95,  // tempo parado depois de entrar (s)
-      OUTRO: 1.8,       // fecho com o card de capa (s)
-      BITRATE: 9000000,
-    };
+    const REEL = { W:1080, H:1920, FPS:30, BEAT_IN:0.4, BEAT_HOLD:1.95, OUTRO:2.0, BITRATE:9000000,
+                   KRAFT:'#C7A473', PAPEL:'#F1E9D8', TINTA:'#17130F', MARCA:'#A82420' };
 
-    function reelPickMime() {
-      if (!('MediaRecorder' in window)) return '';
-      const cands = [
-        'video/mp4;codecs=avc1.42E01E',
-        'video/mp4',
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8',
-        'video/webm',
-      ];
-      for (const t of cands) {
-        try { if (MediaRecorder.isTypeSupported(t)) return t; } catch (e) {}
+    function reelPickMime(){
+      if(!('MediaRecorder' in window)) return '';
+      for(const t of ['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm']){
+        try{ if(MediaRecorder.isTypeSupported(t)) return t; }catch(e){}
       }
       return '';
     }
+    function reelLoadImg(src){ return new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+    function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
-    function reelBeats() {
-      const d = state.data;
-      if (d && Array.isArray(d.reel) && d.reel.length) {
-        return d.reel.map(s => String(s).trim()).filter(Boolean).slice(0, 4);
+    function hexToRgb(h){ h=(h||'').replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+    function rgbSat(r,g,b){ const mx=Math.max(r,g,b),mn=Math.min(r,g,b); if(mx===0) return 0; return (mx-mn)/mx; }
+    function reelAccent(){
+      const hex = state.accent || REEL.MARCA;
+      const {r,g,b}=hexToRgb(hex);
+      return rgbSat(r,g,b) < 0.18 ? REEL.MARCA : hex;   // capa neutra -> vermelho de marca
+    }
+
+    function reelBeats(){
+      const d=state.data, r=d&&d.reel;
+      const norm=(t,e)=>({text:String(t||'').replace(/\s+/g,' ').trim(), emphasis:e?String(e).trim():''});
+      if(r&&Array.isArray(r.beats)&&r.beats.length) return r.beats.map(b=>norm(b.text,b.emphasis)).filter(b=>b.text).slice(0,4);
+      if(Array.isArray(r)&&r.length) return r.map(s=>norm(s,'')).filter(b=>b.text).slice(0,4);
+      const hook=(d&&d.slides&&d.slides.hook)?String(d.slides.hook):'';
+      const parts=hook.replace(/\s+/g,' ').match(/[^.!?]+[.!?]*/g)||[hook];
+      return parts.map(s=>norm(s,'')).filter(b=>b.text).slice(0,4);
+    }
+    // divide um beat em {pre, block, post}; block = emphasis (ou *asteriscos*), o resto some do texto normal
+    function splitBeat(b){
+      let text=b.text, block=b.emphasis;
+      if(!block){ const m=text.match(/\*([^*]+)\*/); if(m){ block=m[1].trim(); text=text.replace(m[0],block); } }
+      if(block){
+        const i=text.toLowerCase().indexOf(block.toLowerCase());
+        if(i>=0){ let post=text.slice(i+block.length).trim(); if(/^[^\p{L}\p{N}]*$/u.test(post)) post=''; return { pre:text.slice(0,i).trim(), block:text.substr(i,block.length).trim(), post }; }
       }
-      const hook = (d && d.slides && d.slides.hook) ? String(d.slides.hook) : '';
-      const parts = hook.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || [hook];
-      return parts.map(s => s.trim()).filter(Boolean).slice(0, 4);
+      return { pre:text.trim(), block:'', post:'' };
     }
 
-    function reelSegments(str) {
-      const segs = []; const re = /\*([^*]+)\*/g; let last = 0, m;
-      while ((m = re.exec(str))) {
-        if (m.index > last) segs.push({ text: str.slice(last, m.index), accent: false });
-        segs.push({ text: m[1], accent: true });
-        last = re.lastIndex;
-      }
-      if (last < str.length) segs.push({ text: str.slice(last), accent: false });
-      return segs.length ? segs : [{ text: str, accent: false }];
-    }
-
-    function reelTokens(segs) {
-      const toks = [];
-      segs.forEach(seg => {
-        seg.text.split(/(\s+)/).filter(w => w.length).forEach(w => {
-          if (/^\s+$/.test(w)) { if (toks.length) toks[toks.length - 1].space = true; return; }
-          // pontuação pura cola no token anterior (evita "ficou ." na fronteira do destaque)
-          if (toks.length && !toks[toks.length - 1].space && /^[^\p{L}\p{N}]+$/u.test(w)) {
-            toks[toks.length - 1].word += w; return;
-          }
-          toks.push({ word: w, accent: seg.accent });
-        });
-      });
-      return toks;
-    }
-
-    function reelWrap(ctx, toks, maxW) {
-      const lines = []; let line = []; let w = 0;
-      const spaceW = ctx.measureText(' ').width;
-      toks.forEach(t => {
-        const tw = ctx.measureText(t.word).width;
-        const add = (line.length ? spaceW : 0) + tw;
-        if (line.length && w + add > maxW) { lines.push(line); line = []; w = 0; }
-        w += (line.length ? spaceW : 0) + tw;
-        line.push(t);
-      });
-      if (line.length) lines.push(line);
-      return lines;
-    }
-
-    function reelDrawText(ctx, toks, cx, cy, maxW, size, offWhite, accent) {
-      ctx.font = `600 ${size}px 'Bricolage Grotesque', sans-serif`;
-      ctx.textBaseline = 'alphabetic';
-      const lineH = size * 1.06;
-      const spaceW = ctx.measureText(' ').width;
-      const lines = reelWrap(ctx, toks, maxW);
-      let y = cy - (lines.length * lineH) / 2 + size;
-      lines.forEach(line => {
-        let lineW = 0;
-        line.forEach((t, i) => { lineW += ctx.measureText(t.word).width + (i ? spaceW : 0); });
-        let x = cx - lineW / 2;
-        line.forEach((t, i) => {
-          if (i) x += spaceW;
-          ctx.fillStyle = t.accent ? accent : offWhite;
-          ctx.fillText(t.word, x, y);
-          x += ctx.measureText(t.word).width;
-        });
-        y += lineH;
-      });
-    }
-
-    function reelGrainTiles() {
-      const tiles = [];
-      for (let k = 0; k < 3; k++) {
-        const c = document.createElement('canvas'); c.width = 256; c.height = 256;
-        const g = c.getContext('2d'); const img = g.createImageData(256, 256);
-        for (let i = 0; i < img.data.length; i += 4) {
-          const v = 120 + Math.random() * 135;
-          img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
-        }
-        g.putImageData(img, 0, 0); tiles.push(c);
+    function reelNoiseTiles(n,dim){
+      const tiles=[];
+      for(let k=0;k<n;k++){
+        const c=document.createElement('canvas'); c.width=dim; c.height=dim;
+        const g=c.getContext('2d'), img=g.createImageData(dim,dim);
+        for(let i=0;i<img.data.length;i+=4){ const v=110+Math.random()*140; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; }
+        g.putImageData(img,0,0); tiles.push(c);
       }
       return tiles;
     }
-
-    function reelLoadImg(src) {
-      return new Promise((res, rej) => {
-        const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src;
-      });
+    function reelPaperTile(dim){
+      const c=document.createElement('canvas'); c.width=dim; c.height=dim;
+      const g=c.getContext('2d'), img=g.createImageData(dim,dim);
+      for(let i=0;i<img.data.length;i+=4){ const v=150+Math.random()*90; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; }
+      g.putImageData(img,0,0); return c;
     }
 
-    async function generateReel() {
-      if (!state.data) { showMsg('cole o JSON e gere os slides primeiro', 'error'); return; }
-      if (!state.duotoneDataUrl) { showMsg('carregue a capa e gere os slides antes do reel', 'error'); return; }
-      const mime = reelPickMime();
-      if (!mime) { showMsg('este navegador não grava vídeo (MediaRecorder). use o Chrome no Android.', 'error'); return; }
+    // retângulo com borda irregular (papel rasgado). rnd é uma função seeded fixa por bloco -> borda estável entre frames
+    function roughRectPath(ctx,x,y,w,h,jit,rnd){
+      const per=7, pts=[];
+      const edge=(x1,y1,x2,y2)=>{ for(let i=0;i<per;i++){ const tt=i/per, px=x1+(x2-x1)*tt, py=y1+(y2-y1)*tt, dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len, off=(rnd()*2-1)*jit; pts.push([px+nx*off,py+ny*off]); } };
+      edge(x,y,x+w,y); edge(x+w,y,x+w,y+h); edge(x+w,y+h,x,y+h); edge(x,y+h,x,y);
+      ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath();
+    }
 
-      const btn = document.getElementById('gen-reel');
-      const orig = btn ? btn.textContent : '';
-      if (btn) { btn.disabled = true; btn.textContent = 'preparando…'; }
+    function drawImageCover(ctx,img,x,y,w,h,biasY,extraScale,panX,panY){
+      const s=(extraScale||1), ar=img.width/img.height, tar=w/h; let dw,dh;
+      if(ar>tar){ dh=h*s; dw=dh*ar; } else { dw=w*s; dh=dw/ar; }
+      const dx=x+(w-dw)/2+(panX||0), dy=y+(h-dh)*(biasY==null?0.5:biasY)+(panY||0);
+      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); ctx.drawImage(img,dx,dy,dw,dh); ctx.restore();
+    }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = REEL.W; canvas.height = REEL.H;
-      canvas.style.position = 'fixed'; canvas.style.left = '-99999px'; canvas.style.top = '0';
+    async function generateReel(){
+      if(!state.data){ showMsg('cole o JSON e gere os slides primeiro','error'); return; }
+      if(!state.coverImage){ showMsg('carregue a capa antes de gerar o reel','error'); return; }
+      const mime=reelPickMime();
+      if(!mime){ showMsg('este navegador não grava vídeo (MediaRecorder). use o Chrome no Android.','error'); return; }
+
+      const btn=document.getElementById('gen-reel'); const orig=btn?btn.textContent:'';
+      if(btn){ btn.disabled=true; btn.textContent='preparando…'; }
+
+      const W=REEL.W, H=REEL.H;
+      const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+      canvas.style.position='fixed'; canvas.style.left='-99999px'; canvas.style.top='0';
       document.body.appendChild(canvas);
-      const ctx = canvas.getContext('2d');
+      const ctx=canvas.getContext('2d');
 
-      try {
-        await document.fonts.load("600 72px 'Bricolage Grotesque'");
-        await document.fonts.load("700 30px 'JetBrains Mono'");
+      try{
+        await document.fonts.load("600 54px 'Bricolage Grotesque'");
+        await document.fonts.load("800 72px 'Bricolage Grotesque'");
+        await document.fonts.load("700 24px 'JetBrains Mono'");
         await document.fonts.ready;
 
-        const bg = await reelLoadImg(state.duotoneDataUrl);
+        const cover=state.coverImage;
+        let selo=null; try{ selo=await reelLoadImg('selo.png'); }catch(e){ selo=null; }
 
-        // Card de capa pro fecho: reusa o slide 1 já renderizado no stage.
-        let coverCard = null;
-        const s0 = document.getElementById('stage-slide-0');
-        if (s0 && s0.firstElementChild) {
-          try {
-            const cc = await html2canvas(s0.firstElementChild, {
-              width: 1080, height: 1350, windowWidth: 1080, windowHeight: 1350,
-              scale: 1, useCORS: true, backgroundColor: null, logging: false,
-            });
-            coverCard = await reelLoadImg(cc.toDataURL('image/png'));
-          } catch (e) { coverCard = null; }
+        const accent=reelAccent(), KRAFT=REEL.KRAFT, PAPEL=REEL.PAPEL;
+        const coverY=(state.coverPhotoY!=null?state.coverPhotoY:50)/100;
+        const beats=reelBeats().map(splitBeat);
+        const grain=reelNoiseTiles(4,240), paper=reelPaperTile(200);
+
+        const beatDur=REEL.BEAT_IN+REEL.BEAT_HOLD, beatsEnd=beats.length*beatDur, total=beatsEnd+REEL.OUTRO;
+        const ML=76;
+
+        function fill(){ ctx.fillStyle='#0b0908'; ctx.fillRect(0,0,W,H); }
+        function drawCoverLiving(t){
+          const p=t/total, scale=1.05+0.075*p+0.008*Math.sin(t*0.9);
+          const panX=(-0.02+0.04*p)*W, panY=(-0.012+0.024*p)*H;
+          drawImageCover(ctx,cover,0,0,W,H,coverY,scale,panX,panY);
+          const g=ctx.createLinearGradient(0,0,0,H);
+          g.addColorStop(0,'rgba(8,7,6,.44)'); g.addColorStop(.42,'rgba(8,7,6,.16)'); g.addColorStop(1,'rgba(8,7,6,.88)');
+          ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+          const {r,gr,b}=(()=>{const c=hexToRgb(accent);return{r:c.r,gr:c.g,b:c.b};})();
+          const rad=ctx.createRadialGradient(W*0.3,H*0.32,0,W*0.3,H*0.32,W*0.9);
+          rad.addColorStop(0,`rgba(${r},${gr},${b},.16)`); rad.addColorStop(.6,'rgba(0,0,0,0)');
+          ctx.save(); ctx.globalCompositeOperation='soft-light'; ctx.fillStyle=rad; ctx.fillRect(0,0,W,H); ctx.restore();
         }
-
-        const beats = reelBeats().map(b => reelTokens(reelSegments(b)));
-        const grain = reelGrainTiles();
-        const offWhite = '#F4F1EA', accent = state.accent || '#E5544D';
-        const coverY = (state.coverPhotoY != null ? state.coverPhotoY : 50) / 100;
-
-        const beatDur = REEL.BEAT_IN + REEL.BEAT_HOLD;
-        const beatsEnd = beats.length * beatDur;
-        const total = beatsEnd + REEL.OUTRO;
-
-        function drawBg(progress) {
-          const scale = 1.03 + 0.12 * progress;
-          const ar = bg.width / bg.height, tar = REEL.W / REEL.H;
-          let dw, dh;
-          if (ar > tar) { dh = REEL.H * scale; dw = dh * ar; }
-          else { dw = REEL.W * scale; dh = dw / ar; }
-          ctx.drawImage(bg, (REEL.W - dw) / 2, (REEL.H - dh) * coverY, dw, dh);
-          const grd = ctx.createLinearGradient(0, 0, 0, REEL.H);
-          grd.addColorStop(0, 'rgba(10,10,10,0.55)');
-          grd.addColorStop(0.45, 'rgba(10,10,10,0.32)');
-          grd.addColorStop(1, 'rgba(10,10,10,0.92)');
-          ctx.fillStyle = grd; ctx.fillRect(0, 0, REEL.W, REEL.H);
+        function drawGrain(t){
+          const step=Math.floor(t*10), tile=grain[step%grain.length];
+          const ox=((step*57)%64)-32, oy=((step*31)%64)-32;
+          ctx.save(); ctx.globalAlpha=0.06; ctx.globalCompositeOperation='overlay';
+          for(let x=-64+ox;x<W+64;x+=tile.width) for(let y=-64+oy;y<H+64;y+=tile.height) ctx.drawImage(tile,x,y);
+          ctx.restore();
         }
-
-        function drawGrain(t) {
-          const tile = grain[Math.floor(t * 12) % grain.length];
-          ctx.save();
-          ctx.globalAlpha = 0.05; ctx.globalCompositeOperation = 'overlay';
-          for (let x = 0; x < REEL.W; x += 256)
-            for (let y = 0; y < REEL.H; y += 256) ctx.drawImage(tile, x, y);
+        function wrapLeft(txt,size,weight,maxW){
+          ctx.font=`${weight} ${size}px 'Bricolage Grotesque', sans-serif`;
+          const words=txt.split(' '), lines=[]; let ln='';
+          for(const w of words){ const test=ln?ln+' '+w:w; if(ctx.measureText(test).width>maxW && ln){ lines.push(ln); ln=w; } else ln=test; }
+          if(ln) lines.push(ln); return lines;
+        }
+        function drawRansom(word,x,yTop,rndSeed){
+          const size=76, pad=22; ctx.font=`800 ${size}px 'Bricolage Grotesque', sans-serif`;
+          const tw=ctx.measureText(word.toUpperCase()).width, bw=tw+pad*2, bh=size*1.12;
+          const cx=x+bw/2, cy=yTop+bh/2;
+          // kraft por baixo (rotacionado pro outro lado)
+          ctx.save(); ctx.translate(cx,cy); ctx.rotate(4.5*Math.PI/180);
+          ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=0; ctx.shadowOffsetX=5; ctx.shadowOffsetY=7;
+          roughRectPath(ctx,-bw/2-6,-bh/2-4,bw+12,bh+8,7,mulberry32(rndSeed+9)); ctx.fillStyle=KRAFT; ctx.fill();
+          ctx.restore();
+          // tinta accent na frente
+          ctx.save(); ctx.translate(cx,cy); ctx.rotate(-3.2*Math.PI/180);
+          roughRectPath(ctx,-bw/2,-bh/2,bw,bh,6,mulberry32(rndSeed)); ctx.save(); ctx.clip();
+          ctx.fillStyle=accent; ctx.fillRect(-bw/2-10,-bh/2-10,bw+20,bh+20);
+          // textura de papel dentro (multiply)
+          ctx.globalAlpha=0.32; ctx.globalCompositeOperation='multiply';
+          for(let px=-bw/2-10;px<bw/2+10;px+=paper.width) for(let py=-bh/2-10;py<bh/2+10;py+=paper.height) ctx.drawImage(paper,px,py);
+          ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+          // variação de tinta (luz/sombra)
+          const lg=ctx.createLinearGradient(-bw/2,-bh/2,bw/2,bh/2); lg.addColorStop(0,'rgba(255,255,255,.10)'); lg.addColorStop(1,'rgba(0,0,0,.16)');
+          ctx.fillStyle=lg; ctx.fillRect(-bw/2-10,-bh/2-10,bw+20,bh+20);
+          ctx.restore(); // fim clip
+          // palavra
+          ctx.fillStyle=PAPEL; ctx.font=`800 ${size}px 'Bricolage Grotesque', sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(word.toUpperCase(),0,2); ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+          ctx.restore();
+          return bh;
+        }
+        function drawSelo(x,y,d,rot){
+          ctx.save(); ctx.translate(x+d/2,y+d/2); ctx.rotate(rot||0);
+          ctx.save(); ctx.beginPath(); ctx.arc(0,0,d/2,0,Math.PI*2); ctx.closePath(); ctx.clip();
+          if(selo){ ctx.drawImage(selo,-d/2,-d/2,d,d); }
+          else{ ctx.fillStyle=REEL.MARCA; ctx.fillRect(-d/2,-d/2,d,d); ctx.fillStyle=PAPEL; ctx.font=`800 ${d*0.4}px 'Bricolage Grotesque', sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('_U',0,d*0.03); ctx.textAlign='left'; ctx.textBaseline='alphabetic'; }
+          ctx.restore();
+          ctx.beginPath(); ctx.arc(0,0,d/2,0,Math.PI*2); ctx.strokeStyle='rgba(199,164,115,.35)'; ctx.lineWidth=2; ctx.stroke();
+          ctx.restore();
+        }
+        function drawBeat(idx,alpha,slam){
+          const b=beats[idx]; const maxW=W-ML-70;
+          // monta linhas do "pre"
+          const preLines=b.pre?wrapLeft(b.pre,52,600,maxW):[];
+          const hasBlock=!!b.block;
+          const postLines=b.post?wrapLeft(b.post,52,600,maxW):[];
+          const lineH=58, blockH=76*1.12;
+          const totalH=preLines.length*lineH + (hasBlock?blockH+18:0) + postLines.length*lineH;
+          let y=H*0.66 - totalH/2; if(y<H*0.42) y=H*0.42;
+          // parallax do texto (contrário à capa)
+          const p=( (idx*beatDur)+ (slam!=null?0:0) )/total;
+          ctx.save(); ctx.globalAlpha=alpha;
+          ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+          ctx.font="600 52px 'Bricolage Grotesque', sans-serif"; ctx.fillStyle='#EAE2D2';
+          preLines.forEach(ln=>{ ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=14; ctx.shadowOffsetY=2; ctx.fillText(ln,ML,y+44); ctx.restore(); y+=lineH; });
+          if(hasBlock){
+            const sc=slam!=null?slam:1;
+            ctx.save(); ctx.translate(ML,y+8); ctx.scale(sc,sc); ctx.translate(-ML,-(y+8));
+            drawRansom(b.block,ML,y+8,(idx+1)*1000+7);
+            ctx.restore();
+            y+=blockH+18;
+          }
+          ctx.font="600 52px 'Bricolage Grotesque', sans-serif"; ctx.fillStyle='#EAE2D2';
+          postLines.forEach(ln=>{ ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=14; ctx.shadowOffsetY=2; ctx.fillText(ln,ML,y+44); ctx.restore(); y+=lineH; });
+          ctx.restore();
+          // eyebrow + selo assinatura
+          ctx.save(); ctx.globalAlpha=alpha;
+          ctx.font="700 22px 'JetBrains Mono', monospace"; ctx.fillStyle='rgba(199,164,115,.9)'; ctx.textAlign='left';
+          ctx.fillText('underscore · leitura', ML, H*0.40);
+          drawSelo(ML, H-150, 66, -6*Math.PI/180);
+          ctx.font="700 20px 'JetBrains Mono', monospace"; ctx.fillStyle='rgba(237,230,213,.55)'; ctx.textBaseline='middle';
+          ctx.fillText(('0'+(idx+1))+' / '+('0'+beats.length), ML+82, H-150+33); ctx.textBaseline='alphabetic';
+          ctx.restore();
+        }
+        function drawCloseText(cx,y,txt,size,color,maxW){
+          ctx.font=`700 ${size}px 'Bricolage Grotesque', sans-serif`; ctx.fillStyle=color; ctx.textAlign='center';
+          const words=txt.split(' '), lines=[]; let ln='';
+          for(const w of words){ const test=ln?ln+' '+w:w; if(ctx.measureText(test).width>maxW&&ln){ lines.push(ln); ln=w; } else ln=test; }
+          if(ln) lines.push(ln);
+          let yy=y; lines.forEach(l=>{ ctx.fillText(l,cx,yy); yy+=size*1.12; }); ctx.textAlign='left'; return yy;
+        }
+        function drawClose(a){
+          ctx.save(); ctx.globalAlpha=a;
+          const cw=W*0.62, ch=cw, cx=(W-cw)/2, cy=H*0.26;
+          drawImageCover(ctx,cover,cx,cy,cw,ch,coverY,1,0,0);
+          ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2; ctx.strokeRect(cx,cy,cw,ch);
+          drawSelo(cx+cw-96, cy+ch-96, 132, -8*Math.PI/180);
+          const yEnd=drawCloseText(W/2, cy+ch+120, 'A leitura que ninguém te conta.', 46, '#EDE6D5', W*0.8);
+          ctx.font="700 24px 'JetBrains Mono', monospace"; ctx.fillStyle='#C7A473'; ctx.textAlign='center';
+          ctx.fillText('A N Á L I S E   N O   P E R F I L', W/2, yEnd+18); ctx.textAlign='left';
           ctx.restore();
         }
 
-        function drawSig() {
-          ctx.font = "700 26px 'JetBrains Mono', monospace";
-          ctx.fillStyle = 'rgba(244,241,234,0.5)';
-          ctx.textAlign = 'center';
-          ctx.fillText('_ u n d e r s c o r e', REEL.W / 2, 1740);
-          ctx.textAlign = 'left';
-        }
-
-        function drawFrame(t) {
-          ctx.clearRect(0, 0, REEL.W, REEL.H);
-          ctx.fillStyle = '#0A0A0A'; ctx.fillRect(0, 0, REEL.W, REEL.H);
-
-          if (t < beatsEnd) {
-            drawBg(t / total);
-            drawGrain(t);
-            const idx = Math.min(beats.length - 1, Math.floor(t / beatDur));
-            const local = t - idx * beatDur;
-            const alpha = local < REEL.BEAT_IN ? (local / REEL.BEAT_IN) : 1;
-            const cx = REEL.W / 2, blockCy = 1150;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = accent;
-            ctx.fillRect(cx - 45, blockCy - 215, 90, 7);
-            reelDrawText(ctx, beats[idx], cx, blockCy, 880, 72, offWhite, accent);
-            ctx.restore();
-            drawSig();
+        function drawFrame(t){
+          fill();
+          if(t<beatsEnd){
+            drawCoverLiving(t); drawGrain(t);
+            const idx=Math.min(beats.length-1,Math.floor(t/beatDur));
+            const local=t-idx*beatDur;
+            const alpha=local<REEL.BEAT_IN?(local/REEL.BEAT_IN):1;
+            const slam=local<REEL.BEAT_IN?(1.18-0.18*(local/REEL.BEAT_IN)):1;
+            drawBeat(idx,alpha,slam);
           } else {
-            const a = Math.max(0, Math.min(1, (t - beatsEnd) / 0.4));
-            ctx.save();
-            ctx.globalAlpha = a;
-            if (coverCard) {
-              const cw = REEL.W, ch = cw * (1350 / 1080), cy = (REEL.H - ch) / 2 - 70;
-              ctx.drawImage(coverCard, 0, cy, cw, ch);
-              ctx.font = "700 30px 'JetBrains Mono', monospace";
-              ctx.fillStyle = offWhite; ctx.textAlign = 'center';
-              ctx.fillText('análise completa no perfil', REEL.W / 2, cy + ch + 96);
-              ctx.textAlign = 'left';
-            } else {
-              ctx.font = "600 72px 'Bricolage Grotesque', sans-serif";
-              ctx.fillStyle = offWhite; ctx.textAlign = 'center';
-              ctx.fillText('análise completa no perfil', REEL.W / 2, REEL.H / 2);
-              ctx.textAlign = 'left';
-            }
-            ctx.restore();
+            drawCoverLiving(t); drawGrain(t);
+            const a=Math.max(0,Math.min(1,(t-beatsEnd)/0.4));
+            drawClose(a);
           }
         }
 
         drawFrame(0);
-        const stream = canvas.captureStream(REEL.FPS);
-        const chunks = [];
-        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: REEL.BITRATE });
-        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-        const stopped = new Promise(res => { rec.onstop = res; });
-
+        const stream=canvas.captureStream(REEL.FPS), chunks=[];
+        const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:REEL.BITRATE});
+        rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+        const stopped=new Promise(res=>{ rec.onstop=res; });
         rec.start(200);
-        const t0 = performance.now();
-        await new Promise(res => {
-          (function loop() {
-            const t = (performance.now() - t0) / 1000;
-            drawFrame(Math.min(t, total));
-            if (btn) btn.textContent = `gravando ${Math.min(total, t).toFixed(1)}s`;
-            if (t >= total) { res(); return; }
-            requestAnimationFrame(loop);
-          })();
-        });
-        await new Promise(r => setTimeout(r, 150));
-        rec.stop();
-        await stopped;
+        const t0=performance.now();
+        await new Promise(res=>{ (function loop(){ const t=(performance.now()-t0)/1000; drawFrame(Math.min(t,total)); if(btn) btn.textContent=`gravando ${Math.min(total,t).toFixed(1)}s`; if(t>=total){ res(); return; } requestAnimationFrame(loop); })(); });
+        await new Promise(r=>setTimeout(r,150));
+        rec.stop(); await stopped;
 
-        const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
-        const safe = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        const base = `underscore-${state.data.id}-${safe(state.data.artist)}-${safe(state.data.song)}-reel`;
-        if (btn) btn.textContent = 'salvando…';
-        await saveBlob(new Blob(chunks, { type: mime }), base + '.' + ext);
-        showMsg(`reel gerado (${ext.toUpperCase()}, ${total.toFixed(1)}s, mudo). adicione a música oficial pela biblioteca do Instagram ao postar.`, 'info', 8000);
-      } catch (err) {
-        showMsg('falha ao gerar o reel: ' + (err && err.message ? err.message : err), 'error', 8000);
+        const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+        const safe=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+        const base=`underscore-${state.data.id}-${safe(state.data.artist)}-${safe(state.data.song)}-reel`;
+        if(btn) btn.textContent='salvando…';
+        await saveBlob(new Blob(chunks,{type:mime}), base+'.'+ext);
+        showMsg(`reel gerado (${ext.toUpperCase()}, ${total.toFixed(1)}s, mudo). adicione a música oficial pela biblioteca do Instagram ao postar.`,'info',8000);
+      } catch(err){
+        showMsg('falha ao gerar o reel: '+(err&&err.message?err.message:err),'error',8000);
       } finally {
         canvas.remove();
-        if (btn) { btn.disabled = false; btn.textContent = orig || 'gerar reel (9:16)'; }
+        if(btn){ btn.disabled=false; btn.textContent=orig||'gerar reel (9:16)'; }
       }
     }
 
