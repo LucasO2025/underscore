@@ -1330,6 +1330,7 @@
     <div class="action-bar">
       <button id="generate" type="button">gerar slides</button>
       <button class="ghost" id="download-all" type="button" disabled>baixar todos</button>
+      <button class="ghost" id="gen-reel" type="button">gerar reel (9:16)</button>
     </div>
 
     <div id="slides-container">
@@ -2390,6 +2391,286 @@
     els.waveUrl.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); genWaveform(); }
     });
+
+    /* =========================================================
+       REEL-ISCA — vídeo 9:16 (capa + hook animado, MUDO)
+       3 beats com corte seco, capa com zoom lento (Ken Burns),
+       grão sutil, fecho no card de capa do carrossel.
+       Grava em MP4 (fallback WebM). A MÚSICA entra depois, no
+       Instagram — por isso o vídeo sai sem áudio.
+
+       Conteúdo dos beats:
+         - se o JSON tiver "reel": ["frase 1","frase 2","frase 3"],
+           cada frase vira um beat (na ordem).
+         - senão, o gerador divide o "hook" em frases (fallback).
+         - trechos entre *asteriscos* saem na cor de destaque.
+       ========================================================= */
+    const REEL = {
+      W: 1080, H: 1920, FPS: 30,
+      BEAT_IN: 0.35,    // fade-in de cada beat (s)
+      BEAT_HOLD: 1.95,  // tempo parado depois de entrar (s)
+      OUTRO: 1.8,       // fecho com o card de capa (s)
+      BITRATE: 9000000,
+    };
+
+    function reelPickMime() {
+      if (!('MediaRecorder' in window)) return '';
+      const cands = [
+        'video/mp4;codecs=avc1.42E01E',
+        'video/mp4',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm',
+      ];
+      for (const t of cands) {
+        try { if (MediaRecorder.isTypeSupported(t)) return t; } catch (e) {}
+      }
+      return '';
+    }
+
+    function reelBeats() {
+      const d = state.data;
+      if (d && Array.isArray(d.reel) && d.reel.length) {
+        return d.reel.map(s => String(s).trim()).filter(Boolean).slice(0, 4);
+      }
+      const hook = (d && d.slides && d.slides.hook) ? String(d.slides.hook) : '';
+      const parts = hook.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || [hook];
+      return parts.map(s => s.trim()).filter(Boolean).slice(0, 4);
+    }
+
+    function reelSegments(str) {
+      const segs = []; const re = /\*([^*]+)\*/g; let last = 0, m;
+      while ((m = re.exec(str))) {
+        if (m.index > last) segs.push({ text: str.slice(last, m.index), accent: false });
+        segs.push({ text: m[1], accent: true });
+        last = re.lastIndex;
+      }
+      if (last < str.length) segs.push({ text: str.slice(last), accent: false });
+      return segs.length ? segs : [{ text: str, accent: false }];
+    }
+
+    function reelTokens(segs) {
+      const toks = [];
+      segs.forEach(seg => {
+        seg.text.split(/(\s+)/).filter(w => w.length).forEach(w => {
+          if (/^\s+$/.test(w)) { if (toks.length) toks[toks.length - 1].space = true; return; }
+          // pontuação pura cola no token anterior (evita "ficou ." na fronteira do destaque)
+          if (toks.length && !toks[toks.length - 1].space && /^[^\p{L}\p{N}]+$/u.test(w)) {
+            toks[toks.length - 1].word += w; return;
+          }
+          toks.push({ word: w, accent: seg.accent });
+        });
+      });
+      return toks;
+    }
+
+    function reelWrap(ctx, toks, maxW) {
+      const lines = []; let line = []; let w = 0;
+      const spaceW = ctx.measureText(' ').width;
+      toks.forEach(t => {
+        const tw = ctx.measureText(t.word).width;
+        const add = (line.length ? spaceW : 0) + tw;
+        if (line.length && w + add > maxW) { lines.push(line); line = []; w = 0; }
+        w += (line.length ? spaceW : 0) + tw;
+        line.push(t);
+      });
+      if (line.length) lines.push(line);
+      return lines;
+    }
+
+    function reelDrawText(ctx, toks, cx, cy, maxW, size, offWhite, accent) {
+      ctx.font = `600 ${size}px 'Bricolage Grotesque', sans-serif`;
+      ctx.textBaseline = 'alphabetic';
+      const lineH = size * 1.06;
+      const spaceW = ctx.measureText(' ').width;
+      const lines = reelWrap(ctx, toks, maxW);
+      let y = cy - (lines.length * lineH) / 2 + size;
+      lines.forEach(line => {
+        let lineW = 0;
+        line.forEach((t, i) => { lineW += ctx.measureText(t.word).width + (i ? spaceW : 0); });
+        let x = cx - lineW / 2;
+        line.forEach((t, i) => {
+          if (i) x += spaceW;
+          ctx.fillStyle = t.accent ? accent : offWhite;
+          ctx.fillText(t.word, x, y);
+          x += ctx.measureText(t.word).width;
+        });
+        y += lineH;
+      });
+    }
+
+    function reelGrainTiles() {
+      const tiles = [];
+      for (let k = 0; k < 3; k++) {
+        const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+        const g = c.getContext('2d'); const img = g.createImageData(256, 256);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = 120 + Math.random() * 135;
+          img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0); tiles.push(c);
+      }
+      return tiles;
+    }
+
+    function reelLoadImg(src) {
+      return new Promise((res, rej) => {
+        const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src;
+      });
+    }
+
+    async function generateReel() {
+      if (!state.data) { showMsg('cole o JSON e gere os slides primeiro', 'error'); return; }
+      if (!state.duotoneDataUrl) { showMsg('carregue a capa e gere os slides antes do reel', 'error'); return; }
+      const mime = reelPickMime();
+      if (!mime) { showMsg('este navegador não grava vídeo (MediaRecorder). use o Chrome no Android.', 'error'); return; }
+
+      const btn = document.getElementById('gen-reel');
+      const orig = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'preparando…'; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = REEL.W; canvas.height = REEL.H;
+      canvas.style.position = 'fixed'; canvas.style.left = '-99999px'; canvas.style.top = '0';
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      try {
+        await document.fonts.load("600 72px 'Bricolage Grotesque'");
+        await document.fonts.load("700 30px 'JetBrains Mono'");
+        await document.fonts.ready;
+
+        const bg = await reelLoadImg(state.duotoneDataUrl);
+
+        // Card de capa pro fecho: reusa o slide 1 já renderizado no stage.
+        let coverCard = null;
+        const s0 = document.getElementById('stage-slide-0');
+        if (s0 && s0.firstElementChild) {
+          try {
+            const cc = await html2canvas(s0.firstElementChild, {
+              width: 1080, height: 1350, windowWidth: 1080, windowHeight: 1350,
+              scale: 1, useCORS: true, backgroundColor: null, logging: false,
+            });
+            coverCard = await reelLoadImg(cc.toDataURL('image/png'));
+          } catch (e) { coverCard = null; }
+        }
+
+        const beats = reelBeats().map(b => reelTokens(reelSegments(b)));
+        const grain = reelGrainTiles();
+        const offWhite = '#F4F1EA', accent = state.accent || '#E5544D';
+        const coverY = (state.coverPhotoY != null ? state.coverPhotoY : 50) / 100;
+
+        const beatDur = REEL.BEAT_IN + REEL.BEAT_HOLD;
+        const beatsEnd = beats.length * beatDur;
+        const total = beatsEnd + REEL.OUTRO;
+
+        function drawBg(progress) {
+          const scale = 1.03 + 0.12 * progress;
+          const ar = bg.width / bg.height, tar = REEL.W / REEL.H;
+          let dw, dh;
+          if (ar > tar) { dh = REEL.H * scale; dw = dh * ar; }
+          else { dw = REEL.W * scale; dh = dw / ar; }
+          ctx.drawImage(bg, (REEL.W - dw) / 2, (REEL.H - dh) * coverY, dw, dh);
+          const grd = ctx.createLinearGradient(0, 0, 0, REEL.H);
+          grd.addColorStop(0, 'rgba(10,10,10,0.55)');
+          grd.addColorStop(0.45, 'rgba(10,10,10,0.32)');
+          grd.addColorStop(1, 'rgba(10,10,10,0.92)');
+          ctx.fillStyle = grd; ctx.fillRect(0, 0, REEL.W, REEL.H);
+        }
+
+        function drawGrain(t) {
+          const tile = grain[Math.floor(t * 12) % grain.length];
+          ctx.save();
+          ctx.globalAlpha = 0.05; ctx.globalCompositeOperation = 'overlay';
+          for (let x = 0; x < REEL.W; x += 256)
+            for (let y = 0; y < REEL.H; y += 256) ctx.drawImage(tile, x, y);
+          ctx.restore();
+        }
+
+        function drawSig() {
+          ctx.font = "700 26px 'JetBrains Mono', monospace";
+          ctx.fillStyle = 'rgba(244,241,234,0.5)';
+          ctx.textAlign = 'center';
+          ctx.fillText('_ u n d e r s c o r e', REEL.W / 2, 1740);
+          ctx.textAlign = 'left';
+        }
+
+        function drawFrame(t) {
+          ctx.clearRect(0, 0, REEL.W, REEL.H);
+          ctx.fillStyle = '#0A0A0A'; ctx.fillRect(0, 0, REEL.W, REEL.H);
+
+          if (t < beatsEnd) {
+            drawBg(t / total);
+            drawGrain(t);
+            const idx = Math.min(beats.length - 1, Math.floor(t / beatDur));
+            const local = t - idx * beatDur;
+            const alpha = local < REEL.BEAT_IN ? (local / REEL.BEAT_IN) : 1;
+            const cx = REEL.W / 2, blockCy = 1150;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = accent;
+            ctx.fillRect(cx - 45, blockCy - 215, 90, 7);
+            reelDrawText(ctx, beats[idx], cx, blockCy, 880, 72, offWhite, accent);
+            ctx.restore();
+            drawSig();
+          } else {
+            const a = Math.max(0, Math.min(1, (t - beatsEnd) / 0.4));
+            ctx.save();
+            ctx.globalAlpha = a;
+            if (coverCard) {
+              const cw = REEL.W, ch = cw * (1350 / 1080), cy = (REEL.H - ch) / 2 - 70;
+              ctx.drawImage(coverCard, 0, cy, cw, ch);
+              ctx.font = "700 30px 'JetBrains Mono', monospace";
+              ctx.fillStyle = offWhite; ctx.textAlign = 'center';
+              ctx.fillText('análise completa no perfil', REEL.W / 2, cy + ch + 96);
+              ctx.textAlign = 'left';
+            } else {
+              ctx.font = "600 72px 'Bricolage Grotesque', sans-serif";
+              ctx.fillStyle = offWhite; ctx.textAlign = 'center';
+              ctx.fillText('análise completa no perfil', REEL.W / 2, REEL.H / 2);
+              ctx.textAlign = 'left';
+            }
+            ctx.restore();
+          }
+        }
+
+        drawFrame(0);
+        const stream = canvas.captureStream(REEL.FPS);
+        const chunks = [];
+        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: REEL.BITRATE });
+        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        const stopped = new Promise(res => { rec.onstop = res; });
+
+        rec.start(200);
+        const t0 = performance.now();
+        await new Promise(res => {
+          (function loop() {
+            const t = (performance.now() - t0) / 1000;
+            drawFrame(Math.min(t, total));
+            if (btn) btn.textContent = `gravando ${Math.min(total, t).toFixed(1)}s`;
+            if (t >= total) { res(); return; }
+            requestAnimationFrame(loop);
+          })();
+        });
+        await new Promise(r => setTimeout(r, 150));
+        rec.stop();
+        await stopped;
+
+        const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+        const safe = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const base = `underscore-${state.data.id}-${safe(state.data.artist)}-${safe(state.data.song)}-reel`;
+        if (btn) btn.textContent = 'salvando…';
+        await saveBlob(new Blob(chunks, { type: mime }), base + '.' + ext);
+        showMsg(`reel gerado (${ext.toUpperCase()}, ${total.toFixed(1)}s, mudo). adicione a música oficial pela biblioteca do Instagram ao postar.`, 'info', 8000);
+      } catch (err) {
+        showMsg('falha ao gerar o reel: ' + (err && err.message ? err.message : err), 'error', 8000);
+      } finally {
+        canvas.remove();
+        if (btn) { btn.disabled = false; btn.textContent = orig || 'gerar reel (9:16)'; }
+      }
+    }
+
+    document.getElementById('gen-reel').addEventListener('click', () => { generateReel(); });
 
     pingBackend();
   </script>
