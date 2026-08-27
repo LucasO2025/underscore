@@ -2421,7 +2421,7 @@
     function reelNoiseTiles(n,dim){ const tiles=[]; for(let k=0;k<n;k++){ const c=document.createElement('canvas'); c.width=c.height=dim; const g=c.getContext('2d'), img=g.createImageData(dim,dim); for(let i=0;i<img.data.length;i+=4){ const v=110+Math.random()*140; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; } g.putImageData(img,0,0); tiles.push(c); } return tiles; }
     function reelHookLines(){
       const d=state.data;
-      const raw=((d&&d.reel&&d.reel.hook)||(d&&d.slides&&d.slides.hook)||'').replace(/\s+/g,' ').trim();
+      const raw=((d&&d.reel&&d.reel.hook)||(d&&d.slides&&d.slides.hook)||'').replace(/\*/g,'').replace(/\s+/g,' ').trim();
       const parts=raw.split(/,\s*/);
       if(parts.length>=2 && parts[0].length && parts.slice(1).join(', ').length) return [parts[0]+',', parts.slice(1).join(', ')];
       const w=raw.split(' '); if(w.length<2) return [raw,''];
@@ -2542,11 +2542,17 @@
         // ===== FAMÍLIA TIPOGRÁFICA =====
         const HERO="800 176px 'Bricolage Grotesque', sans-serif";
         const rawHook=((d.reel&&d.reel.hook)||(d.slides&&d.slides.hook)||'').replace(/\s+/g,' ').trim();
-        const _hw=rawHook.split(' ');
-        const impactWord=(_hw.length?_hw[_hw.length-1]:'').toUpperCase();
-        const setupCaps=_hw.slice(0,-1).join(' ').toUpperCase();
+        // palavra-eixo: marcada com *asteriscos* (o trecho estoura); sem marcador, cai na ultima palavra
+        let impactSrc, setupSrc; const _mk=rawHook.match(/\*(.+?)\*/);
+        if(_mk){ impactSrc=(_mk[1]+rawHook.slice(_mk.index+_mk[0].length)).replace(/\*/g,'').replace(/\s+/g,' ').trim(); setupSrc=rawHook.slice(0,_mk.index).replace(/\*/g,'').replace(/\s+/g,' ').trim(); }
+        else { const _hw=rawHook.replace(/\*/g,'').split(' '); impactSrc=_hw.length?_hw[_hw.length-1]:''; setupSrc=_hw.slice(0,-1).join(' '); }
+        const impactWord=impactSrc.toUpperCase();
+        const setupCaps=setupSrc.toUpperCase();
         const tipoLines=setupCaps ? wrapCaps(setupCaps, W-ML-80, HERO) : [];
         const TLH=158, TFIRST=648, TIMPBASE=TFIRST+tipoLines.length*TLH;
+        // auto-fit da palavra-eixo: encolhe a fonte se o trecho marcado for largo demais pra caber assentado
+        let IMPPX=176; for(;IMPPX>96;IMPPX-=6){ ctx.font=`800 ${IMPPX}px 'Bricolage Grotesque', sans-serif`; if(ctx.measureText(impactWord).width<=W-40) break; }
+        const IMPFONT=`800 ${IMPPX}px 'Bricolage Grotesque', sans-serif`;
         const YEAR=String(d.year||'');
         const creditCaps=(SONG+(d.artist?(' — '+d.artist):'')).toUpperCase();
 
@@ -2581,8 +2587,8 @@
 
           // palavra-eixo estourada -> normaliza (ultrapassa as bordas, cortada pela moldura)
           if(impOp>0.01 && impactWord){
-            ctx.save(); ctx.globalAlpha=impOp; ctx.font=HERO; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-            const ww=ctx.measureText(impactWord).width, cx=ML+ww/2, cy=TIMPBASE-176*0.34;
+            ctx.save(); ctx.globalAlpha=impOp; ctx.font=IMPFONT; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+            const ww=ctx.measureText(impactWord).width, cx=ML+ww/2, cy=TIMPBASE-IMPPX*0.34;
             ctx.translate(cx,cy); ctx.scale(impScale,impScale); ctx.translate(-cx,-cy);
             ctx.fillStyle=accent; ctx.fillText(impactWord, ML, TIMPBASE);
             ctx.restore();
