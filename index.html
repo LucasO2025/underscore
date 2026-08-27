@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet">
 
   <style>
@@ -1330,6 +1330,10 @@
     <div class="action-bar">
       <button id="generate" type="button">gerar slides</button>
       <button class="ghost" id="download-all" type="button" disabled>baixar todos</button>
+      <select id="reel-family" class="ghost" title="família do reel" style="cursor:pointer;">
+        <option value="editorial">reel · editorial</option>
+        <option value="tipografica">reel · tipográfica</option>
+      </select>
       <button class="ghost" id="gen-reel" type="button">gerar reel (9:16)</button>
     </div>
 
@@ -2427,14 +2431,16 @@
 
     async function generateReel(){
       if(!state.data){ showMsg('cole o JSON e gere os slides primeiro','error'); return; }
-      if(!state.coverImage){ showMsg('carregue a capa antes de gerar o reel','error'); return; }
+      const family=(document.getElementById('reel-family')||{}).value||'editorial';
+      if(family==='editorial' && !state.coverImage){ showMsg('carregue a capa antes de gerar o reel Editorial','error'); return; }
       const mime=reelPickMime();
       if(!mime){ showMsg('este navegador não grava vídeo (MediaRecorder). use o Chrome.','error'); return; }
 
       const btn=document.getElementById('gen-reel'); const orig=btn?btn.textContent:'';
       if(btn){ btn.disabled=true; btn.textContent='preparando…'; }
 
-      const W=REEL.W, H=REEL.H, ML=REEL.ML, DUR=REEL.TOTAL;
+      const W=REEL.W, H=REEL.H, ML=REEL.ML;
+      const DUR = family==='tipografica' ? 7.5 : REEL.TOTAL;
       const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
       canvas.style.position='fixed'; canvas.style.left='-99999px'; canvas.style.top='0';
       document.body.appendChild(canvas);
@@ -2443,9 +2449,9 @@
       try{
         await Promise.all([
           document.fonts.load("600 62px 'Bricolage Grotesque'"),
+          document.fonts.load("700 70px 'Bricolage Grotesque'"),
           document.fonts.load("800 104px 'Bricolage Grotesque'"),
-          document.fonts.load("800 84px 'Bricolage Grotesque'"),
-          document.fonts.load("600 66px 'Bricolage Grotesque'"),
+          document.fonts.load("800 176px 'Bricolage Grotesque'"),
           document.fonts.load("500 30px 'JetBrains Mono'")
         ]);
         await document.fonts.ready;
@@ -2461,7 +2467,7 @@
         const ARTIST=(String(d.artist||'')+(d.year?(' · '+d.year):'')).toUpperCase();
 
         const clamp=(x,a,b)=>x<a?a:x>b?b:x, prog=(t,a,b)=>clamp((t-a)/(b-a),0,1), lerp=(a,b,p)=>a+(b-a)*p;
-        const easeOutCubic=p=>1-Math.pow(1-p,3), easeInCubic=p=>p*p*p, easeInOut=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2, easeOutSine=p=>Math.sin(p*Math.PI/2);
+        const easeOutCubic=p=>1-Math.pow(1-p,3), easeInCubic=p=>p*p*p, easeInOut=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2, easeOutSine=p=>Math.sin(p*Math.PI/2), easeOutExpo=p=>p===1?1:1-Math.pow(2,-10*p);
         function setLS(px){ try{ ctx.letterSpacing=px+'px'; }catch(e){} }
         function roundRect(x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
         function coverRect(x,y,w,h,scale,panX,panY,radius){
@@ -2473,6 +2479,7 @@
         }
         function drawGrain(t){ const step=Math.floor(t*10), tile=grain[step%grain.length]; const ox=((step*57)%64)-32, oy=((step*31)%64)-32; ctx.save(); ctx.globalAlpha=0.06; ctx.globalCompositeOperation='overlay'; for(let x=-64+ox;x<W+64;x+=tile.width) for(let y=-64+oy;y<H+64;y+=tile.height) ctx.drawImage(tile,x,y); ctx.restore(); }
         function maskLine(txt,x,yb,font,fill,off,lineH){ ctx.save(); ctx.beginPath(); ctx.rect(0,yb-lineH,W,lineH*1.28); ctx.clip(); ctx.font=font; ctx.fillStyle=fill; ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.fillText(txt,x,yb+off); ctx.restore(); }
+        function wrapCaps(txt,maxW,font){ ctx.font=font; const ws=txt.split(' '),lines=[]; let ln=''; for(const w of ws){ const test=ln?ln+' '+w:w; if(ctx.measureText(test).width>maxW && ln){ lines.push(ln); ln=w; } else ln=test; } if(ln) lines.push(ln); return lines; }
         function drawSelo(cx,cy,dm,rot,alpha){
           ctx.save(); ctx.globalAlpha=alpha; ctx.translate(cx,cy); ctx.rotate(rot||0);
           ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=26; ctx.shadowOffsetY=10;
@@ -2482,14 +2489,14 @@
           ctx.restore();
         }
 
-        function drawFrame(t){
+        // ===== FAMÍLIA EDITORIAL =====
+        function drawEditorial(t){
           ctx.fillStyle='#0b0908'; ctx.fillRect(0,0,W,H);
           const gIn=easeOutCubic(prog(t,0,.5));
           const kb=easeOutSine(prog(t,0,5.3));
           const cardP=easeInOut(prog(t,5.3,6.5));
           const kbOut=1-cardP;
 
-          // capa: tela cheia -> card quadrado (encolhe + descropa)
           const CW=720, cardX=(W-CW)/2, cardY=380, cardBottom=cardY+CW;
           const rx=lerp(0,cardX,cardP), ry=lerp(0,cardY,cardP), rw=lerp(W,CW,cardP), rh=lerp(H,CW,cardP);
           const radius=26*cardP;
@@ -2499,15 +2506,12 @@
           coverRect(rx,ry,rw,rh,scale,panX,panY,radius);
           if(cardP>0.02){ ctx.save(); roundRect(rx,ry,rw,rh,radius); ctx.strokeStyle=`rgba(255,255,255,${(0.10*cardP).toFixed(3)})`; ctx.lineWidth=2; ctx.stroke(); ctx.restore(); }
 
-          // scrim (só na fase do hook)
           const hookPres=prog(t,1.8,2.4)*(1-prog(t,5.2,5.9));
           if(hookPres>0.01){ const g=ctx.createLinearGradient(0,H*0.45,0,H); g.addColorStop(0,'rgba(9,8,8,0)'); g.addColorStop(1,`rgba(9,8,8,${(0.92*hookPres).toFixed(3)})`); ctx.fillStyle=g; ctx.fillRect(0,H*0.45,W,H*0.55); }
 
-          // rótulo topo
           const ltA=gIn*easeOutCubic(prog(t,0.5,1.4))*(1-prog(t,5.2,5.8));
           if(ltA>0.01){ ctx.save(); ctx.globalAlpha=ltA; ctx.font="500 30px 'JetBrains Mono', monospace"; ctx.textAlign='left'; setLS(lerp(14,4,easeOutCubic(prog(t,0.5,1.4)))); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=18; ctx.fillStyle='rgba(237,230,221,.92)'; ctx.fillText('underscore · leitura', ML, 150); setLS(0); ctx.restore(); }
 
-          // hook (fase 1)
           if(gIn>0.01 && t<6.2 && HL[0]){
             const y2=1470, y1=y2-118;
             const in1=easeOutCubic(prog(t,2.0,3.0)), in2=easeOutCubic(prog(t,2.14,3.14));
@@ -2518,11 +2522,9 @@
             ctx.restore();
           }
 
-          // waveform (fase 1)
           const wv=prog(t,2.0,2.8)*(1-prog(t,5.0,5.5));
           if(wv>0.01){ ctx.save(); ctx.globalAlpha=wv*0.6; const n=44, x0=ML, x1=W-160, gap=5, bw=((x1-x0)-(n-1)*gap)/n, baseY=1560, maxH=64; for(let i=0;i<n;i++){ const env=0.32+0.68*Math.abs(Math.sin(t*2.3+i*0.32+i)); const bh=env*maxH; const gx=x0+i*(bw+gap); const gr=ctx.createLinearGradient(0,baseY-bh,0,baseY); gr.addColorStop(0,'rgba(237,230,221,.72)'); gr.addColorStop(1,`rgba(${reelHexToRgb(accent).r},${reelHexToRgb(accent).g},${reelHexToRgb(accent).b},.30)`); ctx.fillStyle=gr; ctx.fillRect(gx,baseY-bh,bw,bh); } ctx.restore(); }
 
-          // fase final: selo + crédito + CTA
           const seloIn=easeOutCubic(prog(t,6.5,7.3));
           if(seloIn>0.01) drawSelo(cardX+CW-40, cardBottom-8, lerp(120,150,seloIn), -6*Math.PI/180, seloIn);
           const songIn=easeOutCubic(prog(t,6.6,7.5));
@@ -2537,6 +2539,70 @@
           if(gIn<1){ ctx.save(); ctx.fillStyle=`rgba(11,9,8,${(1-gIn).toFixed(3)})`; ctx.fillRect(0,0,W,H); ctx.restore(); }
         }
 
+        // ===== FAMÍLIA TIPOGRÁFICA =====
+        const HERO="800 176px 'Bricolage Grotesque', sans-serif";
+        const rawHook=((d.reel&&d.reel.hook)||(d.slides&&d.slides.hook)||'').replace(/\s+/g,' ').trim();
+        const _hw=rawHook.split(' ');
+        const impactWord=(_hw.length?_hw[_hw.length-1]:'').toUpperCase();
+        const setupCaps=_hw.slice(0,-1).join(' ').toUpperCase();
+        const tipoLines=setupCaps ? wrapCaps(setupCaps, W-ML-80, HERO) : [];
+        const TLH=158, TFIRST=648, TIMPBASE=TFIRST+tipoLines.length*TLH;
+        const YEAR=String(d.year||'');
+        const creditCaps=(SONG+(d.artist?(' — '+d.artist):'')).toUpperCase();
+
+        function drawTipo(t){
+          ctx.fillStyle='#08060a'; ctx.fillRect(0,0,W,H);
+          const rg=ctx.createRadialGradient(W*0.78,H*0.08,0,W*0.78,H*0.08,W*1.15);
+          rg.addColorStop(0,'#171019'); rg.addColorStop(.5,'#0d0a10'); rg.addColorStop(1,'rgba(8,6,10,0)');
+          ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+          const gIn=easeOutCubic(prog(t,0,.5));
+
+          // ghost: ano do álbum
+          const ghA=prog(t,0.3,1.6)*0.032;
+          if(ghA>0.001 && YEAR){ ctx.save(); ctx.fillStyle=`rgba(233,220,205,${ghA.toFixed(3)})`; ctx.font="800 760px 'Bricolage Grotesque', sans-serif"; ctx.textAlign='right'; ctx.textBaseline='alphabetic'; ctx.fillText(YEAR, W+90-26*(t/DUR), 760+24*(t/DUR)); ctx.textAlign='left'; ctx.restore(); }
+
+          // label + crédito
+          const ltIn=easeOutCubic(prog(t,0.4,1.2));
+          ctx.save(); ctx.globalAlpha=gIn*ltIn; ctx.font="500 30px 'JetBrains Mono', monospace"; ctx.fillStyle='rgba(237,230,221,.9)'; ctx.textAlign='left'; setLS(lerp(14,4,ltIn)); ctx.fillText('underscore · leitura', ML, 272); setLS(0); ctx.restore();
+          ctx.save(); ctx.globalAlpha=gIn*prog(t,0.7,1.5); ctx.font="500 26px 'JetBrains Mono', monospace"; ctx.fillStyle='rgba(184,174,166,.95)'; ctx.textAlign='left'; setLS(3.6); ctx.fillText(creditCaps, ML, 330); setLS(0); ctx.restore();
+
+          // barra de accent
+          const barIn=easeOutExpo(prog(t,1.0,1.8));
+          ctx.save(); ctx.globalAlpha=gIn; ctx.fillStyle=accent; ctx.fillRect(ML,470,300*barIn,14); ctx.restore();
+
+          // impacto: escala da palavra-eixo
+          const entr=easeOutCubic(prog(t,1.8,2.7)), impScale=lerp(2.7,1.0,entr), impOp=prog(t,1.8,2.15);
+          const big=clamp((impScale-1)/1.7,0,1);
+
+          // linhas de setup (máscara), esmaecem durante o impacto
+          ctx.save(); ctx.globalAlpha=(1-0.5*big);
+          tipoLines.forEach((ln,i)=>{ const inE=easeOutExpo(prog(t,0.9+i*0.2,1.6+i*0.2)); maskLine(ln, ML, TFIRST+i*TLH, HERO, '#ffffff', (1-inE)*160, TLH); });
+          ctx.restore();
+
+          // palavra-eixo estourada -> normaliza (ultrapassa as bordas, cortada pela moldura)
+          if(impOp>0.01 && impactWord){
+            ctx.save(); ctx.globalAlpha=impOp; ctx.font=HERO; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+            const ww=ctx.measureText(impactWord).width, cx=ML+ww/2, cy=TIMPBASE-176*0.34;
+            ctx.translate(cx,cy); ctx.scale(impScale,impScale); ctx.translate(-cx,-cy);
+            ctx.fillStyle=accent; ctx.fillText(impactWord, ML, TIMPBASE);
+            ctx.restore();
+          }
+
+          // assentamento: rodapé
+          const kickA=prog(t,4.4,5.1);
+          if(kickA>0.01){ ctx.save(); ctx.globalAlpha=kickA; ctx.font="500 30px 'JetBrains Mono', monospace"; ctx.textAlign='left'; setLS(lerp(6,20,easeOutCubic(prog(t,4.4,5.7)))); ctx.fillStyle=accent; ctx.fillText('ANÁLISE NO PERFIL', ML, 1300); setLS(0); ctx.restore(); }
+          const c1=easeOutCubic(prog(t,4.7,5.6)), c2=easeOutCubic(prog(t,4.82,5.72));
+          maskLine('A leitura que', ML, 1390, "700 70px 'Bricolage Grotesque', sans-serif", '#EDE6DD', (1-c1)*95, 95);
+          maskLine('ninguém te conta.', ML, 1465, "700 70px 'Bricolage Grotesque', sans-serif", '#EDE6DD', (1-c2)*95, 95);
+          const seloIn=easeOutCubic(prog(t,4.7,5.5));
+          if(seloIn>0.01) drawSelo(852, 1452, lerp(0.7,0.86,seloIn)*150, 0, seloIn);
+
+          drawGrain(t);
+          if(gIn<1){ ctx.save(); ctx.fillStyle=`rgba(8,6,10,${(1-gIn).toFixed(3)})`; ctx.fillRect(0,0,W,H); ctx.restore(); }
+        }
+
+        const drawFrame = family==='tipografica' ? drawTipo : drawEditorial;
+
         drawFrame(0);
         const stream=canvas.captureStream(REEL.FPS), chunks=[];
         const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:REEL.BITRATE});
@@ -2550,10 +2616,10 @@
 
         const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
         const safe=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-        const base=`underscore-${state.data.id}-${safe(state.data.artist)}-${safe(state.data.song)}-reel`;
+        const base=`underscore-${state.data.id}-${safe(state.data.artist)}-${safe(state.data.song)}-reel-${family}`;
         if(btn) btn.textContent='salvando…';
         await saveBlob(new Blob(chunks,{type:mime}), base+'.'+ext);
-        showMsg(`reel gerado (${ext.toUpperCase()}, ${DUR.toFixed(1)}s, mudo). adicione a música oficial pela biblioteca do Instagram ao postar.`,'info',8000);
+        showMsg(`reel ${family} gerado (${ext.toUpperCase()}, ${DUR.toFixed(1)}s, mudo). adicione a música oficial pela biblioteca do Instagram ao postar.`,'info',8000);
       } catch(err){
         showMsg('falha ao gerar o reel: '+(err&&err.message?err.message:err),'error',8000);
       } finally {
