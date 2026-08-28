@@ -1280,13 +1280,17 @@
         </div>
 
         <div class="control-group">
-          <label>Cor de acento (duotone + destaques)</label>
+          <label>Cor de acento (destaques + filtro da capa)</label>
           <div class="color-row">
             <input type="color" id="accent-color" value="#E5544D">
             <span class="hex-display" id="hex-display">#E5544D</span>
             <button class="ghost small" id="auto-extract" type="button">extrair da capa</button>
           </div>
           <div class="palette-swatches" id="palette-swatches"></div>
+          <label class="check" style="margin-top:10px;">
+            <input type="checkbox" id="cover-original">
+            <span>capa original (sem filtro duotone)</span>
+          </label>
         </div>
 
         <div class="control-group">
@@ -1362,6 +1366,7 @@
       accentColor: document.getElementById('accent-color'),
       hexDisplay: document.getElementById('hex-display'),
       autoExtract: document.getElementById('auto-extract'),
+      coverOriginal: document.getElementById('cover-original'),
       isSuggestion: document.getElementById('is-suggestion'),
       suggestionNumber: document.getElementById('suggestion-number'),
       generate: document.getElementById('generate'),
@@ -1381,6 +1386,7 @@
       coverImage: null,     // HTMLImageElement carregada
       coverDataUrl: null,   // data URL (funciona mesmo com CORS depois do FileReader)
       accent: '#E5544D',
+      originalCover: false,  // true = capa sem filtro duotone (mantém accent + destaques)
       duotoneDataUrl: null,
       // Slide de curiosidade: foto dedicada (upload) + assinatura de áudio.
       curioImage: null,           // HTMLImageElement da foto do slide 4 (opcional)
@@ -1664,6 +1670,23 @@
       }
       ctx.putImageData(imgData, 0, 0);
       return canvas.toDataURL('image/jpeg', 0.92);
+    }
+
+    /* Igual ao applyDuotone no dimensionamento, mas sem recolorir: devolve a
+       imagem ORIGINAL como data URL (usado quando "capa original" está ligado). */
+    function coverPlain(img) {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1600;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      try {
+        return canvas.toDataURL('image/jpeg', 0.92);
+      } catch (e) {
+        showMsg('capa falhou: canvas contaminado por CORS. use upload local.', 'error');
+        return null;
+      }
     }
 
     /* =========================================================
@@ -2146,6 +2169,10 @@
       if (state.palette.length) renderPalette();
     });
 
+    els.coverOriginal.addEventListener('change', (e) => {
+      state.originalCover = e.target.checked;
+    });
+
     els.isSuggestion.addEventListener('change', (e) => {
       state.isFollowerSuggestion = e.target.checked;
       els.suggestionNumber.disabled = !e.target.checked;
@@ -2245,18 +2272,24 @@
         return;
       }
 
-      // duotone preto → accent, base do visual
-      const duotone = applyDuotone(state.coverImage, '#0A0A0A', state.accent);
-      if (!duotone) return; // applyDuotone já mostrou mensagem em caso de erro
-      state.duotoneDataUrl = duotone;
+      // capa: duotone preto → accent (padrão) OU original sem filtro, conforme o toggle.
+      // A extração de cor e o destaque das aspas independem disso: seguem usando state.accent.
+      const cover = state.originalCover
+        ? coverPlain(state.coverImage)
+        : applyDuotone(state.coverImage, '#0A0A0A', state.accent);
+      if (!cover) return; // já mostrou mensagem em caso de erro (CORS)
+      state.duotoneDataUrl = cover;
 
       // cor de acento normalizada em OKLCh — só usada nos componentes
       // .us-selo e .us-cta da série sugestão de seguidor.
       state.accentOklch = normalizeAccentToOklch(state.accent);
 
-      // Slide 4: foto em duotone (upload dedicado → fallback capa) e waveform.
+      // Slide 4: foto dedicada mantém o duotone; no fallback pra capa, segue o
+      // toggle "capa original" pra bater com o slide 1.
       const curioSrc = state.curioImage || state.coverImage;
-      state.curioDuotoneDataUrl = applyDuotone(curioSrc, '#0A0A0A', state.accent);
+      state.curioDuotoneDataUrl = (state.originalCover && !state.curioImage)
+        ? coverPlain(curioSrc)
+        : applyDuotone(curioSrc, '#0A0A0A', state.accent);
 
       // Waveform: array no JSON tem prioridade (offline-friendly); senão extrai
       // ao vivo do youtube_url via backend; sem backend e sem array, cai em
