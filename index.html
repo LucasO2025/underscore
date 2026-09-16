@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500;700&family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
 
   <style>
@@ -309,6 +309,21 @@
     }
 
     .suggestion-row input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .suggestion-row select {
+      background: var(--black);
+      border: 1px solid var(--ui-border);
+      color: var(--off-white);
+      padding: 8px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .suggestion-row select:focus {
       outline: none;
       border-color: var(--accent);
     }
@@ -1163,6 +1178,167 @@
     }
 
     /* ============================================================
+       LINHA "INDIE" — segunda pele (descoberta / DIY / serigrafia).
+       Escopada em [data-linha="indie"]; convive com a linha principal
+       sem vazar. Valores do preview aprovado escalados ~2.5x pro
+       canvas real 1080x1350. Fontes: Bricolage / Space Mono / Anton.
+       ============================================================ */
+    [data-linha="indie"] {
+      --paper:   #ded2bc;
+      --paper2:  #d3c6ad;
+      --ink:     #191512;
+      --ink2:    #3a3128;
+      --red:     #c23a22;
+      --redink:  #5c1a10;
+      --muted:   #7a6d59;
+      --accent-photo: #f0a58f;
+    }
+
+    [data-linha="indie"] .slide {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Bricolage Grotesque', sans-serif;
+    }
+    /* o indie usa o grão de fotocópia próprio (.grain), não o overlay padrão */
+    [data-linha="indie"] .slide::after { display: none; }
+
+    [data-linha="indie"] .pad { position: absolute; inset: 0; padding: 64px; z-index: 3; }
+
+    /* grão de fotocópia (multiply) sobre cada slide */
+    [data-linha="indie"] .grain {
+      position: absolute; inset: 0; pointer-events: none; z-index: 4;
+      opacity: .42; mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* marca (esq) + selo de curadoria (dir) — todos os slides */
+    [data-linha="indie"] .in-brand {
+      position: absolute; top: 64px; left: 64px; right: 64px; z-index: 5;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      font-family: 'Space Mono', monospace; font-size: 24px;
+      letter-spacing: .15em; text-transform: uppercase; color: var(--ink);
+    }
+    [data-linha="indie"] .in-brand .in-mark span { color: var(--red); }
+    [data-linha="indie"] .in-selo {
+      border: 4px solid var(--red); color: var(--red); padding: 8px 18px;
+      transform: rotate(-3deg); font-weight: 700; letter-spacing: .08em;
+      white-space: nowrap; background: transparent;
+    }
+
+    /* elementos de análise */
+    [data-linha="indie"] .in-num {
+      font-family: 'Anton', sans-serif; line-height: .8; color: var(--ink);
+      letter-spacing: .01em;
+    }
+    [data-linha="indie"] .in-lbl {
+      font-family: 'Space Mono', monospace; font-size: 30px;
+      letter-spacing: .04em; color: var(--red); text-transform: lowercase;
+    }
+    [data-linha="indie"] .in-body { font-size: 36px; line-height: 1.44; max-width: 900px; }
+    [data-linha="indie"] .in-body p { margin: 0 0 0.7em; }
+    [data-linha="indie"] .in-body b,
+    [data-linha="indie"] .in-body strong { color: var(--redink); font-weight: 600; }
+    [data-linha="indie"] .in-body em { color: var(--redink); font-style: italic; }
+    [data-linha="indie"] .in-foot {
+      position: absolute; left: 64px; bottom: 46px; z-index: 5;
+      font-family: 'Space Mono', monospace; font-size: 23px;
+      letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    }
+
+    /* bloco datilografado com a fala do artista (slide 3) */
+    [data-linha="indie"] .in-quote {
+      font-family: 'Space Mono', monospace; font-size: 29px; line-height: 1.5;
+      background: var(--ink); color: var(--paper); padding: 28px 30px;
+      position: relative; max-width: 860px;
+    }
+    [data-linha="indie"] .in-quote::before {
+      content: attr(data-label);
+      position: absolute; top: -18px; left: 22px; background: var(--red); color: #fff;
+      font-size: 19px; letter-spacing: .1em; padding: 3px 14px; text-transform: uppercase;
+    }
+
+    /* SLIDE 1 — abertura / capa */
+    [data-linha="indie"] .in-s1 { background: #241a20; color: #fff; }
+    [data-linha="indie"] .in-s1 .in-capa {
+      position: absolute; inset: 0; z-index: 1;
+      background-color: #050505; background-size: cover; background-position: center 50%;
+    }
+    [data-linha="indie"] .in-s1 .in-scrim {
+      position: absolute; inset: 0; z-index: 2;
+      background: linear-gradient(to top, rgba(20,14,17,.95) 34%, rgba(20,14,17,0) 68%);
+    }
+    [data-linha="indie"] .in-s1 .in-selo { background: var(--red); color: #fff; border-color: var(--red); }
+    [data-linha="indie"] .in-s1 .in-brand { color: #fff; }
+    [data-linha="indie"] .in-s1 .in-bottom {
+      position: absolute; left: 64px; right: 64px; bottom: 130px; z-index: 5;
+    }
+    [data-linha="indie"] .in-s1 .in-eyebrow {
+      font-family: 'Space Mono', monospace; font-size: 25px; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--accent-photo); margin-bottom: 26px;
+    }
+    [data-linha="indie"] .in-s1 .in-eyebrow::before {
+      content: ''; display: inline-block; width: 40px; height: 4px;
+      background: var(--accent-photo); vertical-align: middle; margin-right: 20px;
+    }
+    [data-linha="indie"] .in-s1 .in-name {
+      font-weight: 800; font-size: 112px; line-height: .92; letter-spacing: -.02em; color: #fff;
+    }
+    [data-linha="indie"] .in-s1 .in-name span { color: var(--accent-photo); }
+    [data-linha="indie"] .in-s1 .in-hook {
+      font-size: 40px; line-height: 1.4; color: #efe7e0; margin-top: 30px; max-width: 900px;
+    }
+    [data-linha="indie"] .in-s1 .in-hook em {
+      color: var(--accent-photo); font-style: normal; border-bottom: 5px solid var(--red);
+    }
+    [data-linha="indie"] .in-s1 .in-foot { color: rgba(255,255,255,.5); }
+
+    /* SLIDE 2 — primeira escuta */
+    [data-linha="indie"] .in-s2 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s2 .in-num { font-size: 240px; }
+    [data-linha="indie"] .in-s2 .in-lbl { margin-top: 6px; }
+    [data-linha="indie"] .in-s2 .in-body { position: absolute; top: 560px; left: 64px; right: 64px; z-index: 5; }
+
+    /* SLIDE 3 — o que passa batido (virada) */
+    [data-linha="indie"] .in-s3 { background: var(--paper2); }
+    [data-linha="indie"] .in-s3 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s3 .in-num { font-size: 240px; }
+    [data-linha="indie"] .in-s3 .in-lbl { margin-top: 6px; }
+    [data-linha="indie"] .in-s3 .in-body { position: absolute; top: 560px; left: 64px; right: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s3 .in-quote { margin-top: 40px; }
+
+    /* SLIDE 4 — de onde vem */
+    [data-linha="indie"] .in-s4 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s4 .in-num { font-size: 168px; }
+    [data-linha="indie"] .in-s4 .in-lbl { margin-top: 6px; }
+    [data-linha="indie"] .in-s4 .in-mid { position: absolute; top: 500px; left: 64px; right: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s4 .in-strip {
+      height: 240px; border: 4px solid var(--ink);
+      background-color: var(--paper2); background-size: cover; background-position: center 50%;
+    }
+    [data-linha="indie"] .in-s4 .in-wave {
+      display: flex; align-items: flex-end; gap: 5px; height: 64px; margin-top: 30px;
+    }
+    [data-linha="indie"] .in-s4 .in-wave i { flex: 1; background: var(--red); display: block; }
+    [data-linha="indie"] .in-s4 .in-body { margin-top: 30px; font-size: 34px; line-height: 1.42; }
+
+    /* SLIDE 5 — encerramento */
+    [data-linha="indie"] .in-s5 { background: var(--ink); color: var(--paper); }
+    [data-linha="indie"] .in-s5 .in-brand { color: var(--paper); }
+    [data-linha="indie"] .in-s5 .in-selo { border-color: var(--paper); color: var(--paper); }
+    [data-linha="indie"] .in-s5 .in-block { position: absolute; left: 64px; right: 64px; top: 520px; z-index: 5; }
+    [data-linha="indie"] .in-s5 .in-rule { width: 95px; height: 7px; background: var(--red); margin-bottom: 45px; }
+    [data-linha="indie"] .in-s5 .in-statement {
+      font-weight: 800; font-size: 84px; line-height: 1.02; letter-spacing: -.015em; max-width: 16ch;
+    }
+    [data-linha="indie"] .in-s5 .in-statement em,
+    [data-linha="indie"] .in-s5 .in-statement span { color: var(--accent-photo); font-style: normal; }
+    [data-linha="indie"] .in-s5 .in-sub {
+      font-family: 'Space Mono', monospace; font-size: 27px; line-height: 1.5;
+      margin-top: 40px; color: #b7a992; max-width: 34ch;
+    }
+    [data-linha="indie"] .in-s5 .in-foot { color: #8a7d67; }
+
+    /* ============================================================
        RESPONSIVE — celular/tablet. Slides continuam 1080×1350 fixos
        no .render-stage offscreen; só a UI ao redor se adapta.
        Botões em 14px+ pra área de toque confortável. Grid colapsa
@@ -1308,6 +1484,17 @@
             <input type="number" id="suggestion-number" min="1" max="999" placeholder="Nº" disabled>
           </div>
         </div>
+
+        <div class="control-group">
+          <label>Linha visual</label>
+          <div class="suggestion-row">
+            <select id="linha-select">
+              <option value="principal">principal · cânone</option>
+              <option value="indie">indie · indicação</option>
+            </select>
+            <input type="number" id="indie-number" min="1" max="99" placeholder="nº indicação" disabled>
+          </div>
+        </div>
       </div>
 
     </section>
@@ -1369,6 +1556,8 @@
       coverOriginal: document.getElementById('cover-original'),
       isSuggestion: document.getElementById('is-suggestion'),
       suggestionNumber: document.getElementById('suggestion-number'),
+      linhaSelect: document.getElementById('linha-select'),
+      indieNumber: document.getElementById('indie-number'),
       generate: document.getElementById('generate'),
       downloadAll: document.getElementById('download-all'),
       slidesContainer: document.getElementById('slides-container'),
@@ -1397,6 +1586,9 @@
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
       isFollowerSuggestion: false,
       suggestionNumber: null,
+      // Linha visual: 'principal' (padrão, cânone) ou 'indie' (descoberta/DIY).
+      linha: 'principal',
+      indieNumber: null,    // número da série "indicação nº XX" (linha indie)
       accentOklch: null,    // string oklch() normalizada, derivada de state.accent
       // Override por slide da cor das aspas (<em> gerados a partir de '...').
       // null = usa --accent global. Índice = posição do slide (0..4).
@@ -1893,6 +2085,143 @@
   `;
     }
 
+    /* =========================================================
+       LINHA INDIE — builders (markup próprio, escopado em
+       [data-linha="indie"]). A linha principal fica intocada.
+       ========================================================= */
+
+    /* Grifos do corpo indie: negrito (asterisco duplo) vira --redink; termo
+       entre asteriscos simples ou aspas vira itálico grifado. Parágrafos por
+       linha dupla, como o formatBody principal. */
+    function formatIndieInline(text) {
+      return escapeHtml(text)
+        .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/&#039;([^&]+?)&#039;/g, '<em>$1</em>')
+        .replace(/'([^']+?)'/g, '<em>$1</em>')
+        .replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+    }
+    function formatIndieBody(text) {
+      return String(text || '').split(/\n\n+/)
+        .map(chunk => '<p>' + formatIndieInline(chunk) + '</p>')
+        .join('');
+    }
+
+    /* Nome do artista (slide 1): *trecho* vira destaque rosa-terroso. */
+    function indieName(text) {
+      return escapeHtml(String(text || '')).replace(/\*([^*]+?)\*/g, '<span>$1</span>');
+    }
+
+    function indieSeloText() {
+      return 'indicação nº ' + String(state.indieNumber || 0).padStart(2, '0');
+    }
+
+    /* Rodapé indie: faixa / referência (álbum · ano). */
+    function indieFootText(d) {
+      const ref = [d.album, d.year].filter(v => v !== undefined && v !== null && v !== '').join(' · ');
+      return String(d.song || '') + (ref ? ' / ' + ref : '');
+    }
+
+    function indieBrand() {
+      return `<div class="in-brand">
+        <span class="in-mark"><span>_</span> underscore</span>
+        <span class="in-selo">${escapeHtml(indieSeloText())}</span>
+      </div>`;
+    }
+
+    function buildIndieSlide1(d, coverY) {
+      const capa = state.coverDataUrl
+        ? `background-image:url('${state.coverDataUrl}');background-position:center ${coverY}%;`
+        : '';
+      return `
+    <div class="slide in-s1" style="${slideStyleVars(0)}">
+      <div class="in-capa" style="${capa}"></div>
+      <div class="in-scrim"></div>
+      <div class="grain"></div>
+      ${indieBrand()}
+      <div class="in-bottom">
+        <div class="in-eyebrow">indicação · artista independente</div>
+        <div class="in-name">${indieName(d.artist)}</div>
+        <div class="in-hook">${formatIndieInline(d.slides.hook || '')}</div>
+      </div>
+    </div>
+  `;
+    }
+
+    function buildIndieTextSlide(d, { slideClass, num, label, body, idx, quote, quoteLabel }) {
+      const quoteBlock = quote
+        ? `<div class="in-quote" data-label="${escapeHtml(quoteLabel || 'a artista, sobre a faixa')}">${escapeHtml(quote)}</div>`
+        : '';
+      return `
+    <div class="slide ${slideClass}" style="${slideStyleVars(idx)}">
+      <div class="grain"></div>
+      ${indieBrand()}
+      <div class="in-head">
+        <div class="in-num">${num}</div>
+        <div class="in-lbl">${escapeHtml(label)}</div>
+      </div>
+      <div class="in-body">${formatIndieBody(body)}${quoteBlock}</div>
+      <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
+    </div>
+  `;
+    }
+
+    function buildIndieSlide4(d, curioY) {
+      const c = d.slides.curiosity || {};
+      const photo = state.curioDataUrl || state.coverDataUrl;
+      const strip = photo
+        ? `background-image:url('${photo}');background-position:center ${curioY}%;`
+        : '';
+      const bodyText = [c.gancho, c.caption].filter(Boolean).join('\n\n');
+      return `
+    <div class="slide in-s4" style="${slideStyleVars(3)}">
+      <div class="grain"></div>
+      ${indieBrand()}
+      <div class="in-head">
+        <div class="in-num">03</div>
+        <div class="in-lbl">de onde vem</div>
+      </div>
+      <div class="in-mid">
+        <div class="in-strip" style="${strip}"></div>
+        <div class="in-wave"></div>
+        <div class="in-body">${formatIndieBody(bodyText)}</div>
+      </div>
+      <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
+    </div>
+  `;
+    }
+
+    function buildIndieSlide5(d) {
+      const credit = escapeHtml(`${d.artist} · ${[d.album, d.year].filter(Boolean).join(' · ')}`);
+      const cta = 'ouça no perfil da artista · link nos comentários';
+      return `
+    <div class="slide in-s5" style="${slideStyleVars(4)}">
+      <div class="grain"></div>
+      ${indieBrand()}
+      <div class="in-block">
+        <div class="in-rule"></div>
+        <div class="in-statement">${formatIndieInline(d.slides.closing || '')}</div>
+        <div class="in-sub">${credit}<br>${cta}</div>
+      </div>
+      <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
+    </div>
+  `;
+    }
+
+    /* Preenche as barras da onda decorativa do slide 4 indie em todos os
+       lugares onde ela aparece (stage + preview). Usa a waveform real do
+       state se houver; senão, uma forma senoidal plausível. */
+    function paintIndieWaves() {
+      const N = 46;
+      const wf = Array.isArray(state.waveform) && state.waveform.length ? state.waveform : null;
+      const heights = [];
+      for (let i = 0; i < N; i++) {
+        const v = wf ? wf[Math.floor(i / N * wf.length)] : Math.abs(Math.sin(i * 0.7));
+        heights.push(15 + Math.round(Math.max(0, Math.min(1, v)) * 85));
+      }
+      const html = heights.map(h => `<i style="height:${h}%"></i>`).join('');
+      document.querySelectorAll('[data-linha="indie"] .in-s4 .in-wave').forEach(w => { w.innerHTML = html; });
+    }
+
     function renderAll() {
       const d = state.data;
       if (!d || !d.slides) {
@@ -1900,7 +2229,17 @@
         return;
       }
 
-      const slidesHtml = [
+      const isIndie = state.linha === 'indie';
+      els.renderStage.setAttribute('data-linha', isIndie ? 'indie' : 'principal');
+      els.slidesContainer.setAttribute('data-linha', isIndie ? 'indie' : 'principal');
+
+      const slidesHtml = isIndie ? [
+        buildIndieSlide1(d, state.coverPhotoY),
+        buildIndieTextSlide(d, { slideClass: 'in-s2', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1 }),
+        buildIndieTextSlide(d, { slideClass: 'in-s3', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel }),
+        buildIndieSlide4(d, state.curioPhotoY),
+        buildIndieSlide5(d),
+      ] : [
         buildSlide1(d),
         buildTextSlide(d, { theme: 'dark', sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1 }),
         buildTextSlide(d, { theme: 'light', sectionNum: '02', label: 'CAMADA', body: d.slides.interpretationB, slideIdx: 2 }),
@@ -1953,6 +2292,9 @@
       els.slidesContainer.querySelectorAll('button[data-i]').forEach(btn => {
         btn.addEventListener('click', () => downloadSlide(parseInt(btn.dataset.i, 10)));
       });
+
+      // onda decorativa do slide 4 indie (stage + preview)
+      if (isIndie) paintIndieWaves();
     }
 
     /* Event delegation pros pickers/reset de quote-color. Os elementos
@@ -2187,6 +2529,19 @@
       state.suggestionNumber = Number.isFinite(v) && v > 0 ? v : null;
     });
 
+    /* Seletor de linha visual (principal/indie) + número da indicação. */
+    els.linhaSelect.addEventListener('change', (e) => {
+      state.linha = e.target.value === 'indie' ? 'indie' : 'principal';
+      els.indieNumber.disabled = state.linha !== 'indie';
+      if (state.data) renderAll();
+    });
+
+    els.indieNumber.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      state.indieNumber = Number.isFinite(v) && v > 0 ? v : null;
+      if (state.data && state.linha === 'indie') renderAll();
+    });
+
     function renderPalette() {
       const el = els.paletteSwatches;
       if (!state.palette || state.palette.length === 0) {
@@ -2270,6 +2625,26 @@
       if (state.isFollowerSuggestion && !state.suggestionNumber) {
         showMsg('informe o número da sugestão (Nº) ou desmarque o checkbox', 'error');
         return;
+      }
+
+      // Linha visual: o JSON pode pré-definir ("linha"); o seletor da UI vale
+      // como padrão/override manual. Sincroniza os dois.
+      if (data.linha === 'indie' || data.linha === 'principal') {
+        state.linha = data.linha;
+        els.linhaSelect.value = data.linha;
+        els.indieNumber.disabled = data.linha !== 'indie';
+      }
+      if (state.linha === 'indie') {
+        // número da indicação: UI tem prioridade; senão "indicacao_num" do JSON.
+        const jsonNum = parseInt(data.indicacao_num, 10);
+        if (!state.indieNumber && Number.isFinite(jsonNum) && jsonNum > 0) {
+          state.indieNumber = jsonNum;
+          els.indieNumber.value = jsonNum;
+        }
+        if (!state.indieNumber) {
+          showMsg('linha indie: informe o nº da indicação (na UI ou via "indicacao_num" no JSON)', 'error');
+          return;
+        }
       }
 
       // capa: duotone preto → accent (padrão) OU original sem filtro, conforme o toggle.
