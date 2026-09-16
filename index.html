@@ -1373,9 +1373,11 @@
     [data-linha="indie"] .in-s4 .in-quote { margin-top: 44px; }
 
     /* SLIDE 5 — encerramento */
-    [data-linha="indie"] .in-s5 { background: var(--ink); color: var(--paper); }
-    [data-linha="indie"] .in-s5 .in-brand { color: var(--paper); }
-    [data-linha="indie"] .in-s5 .in-selo { border-color: var(--paper); color: var(--paper); }
+    /* fundo tingido da capa (--paper2 injetado), o mais escuro da série; texto
+       claro em literais (--paper agora carrega o fundo tingido). */
+    [data-linha="indie"] .in-s5 { background: var(--paper2); color: #efe7d9; }
+    [data-linha="indie"] .in-s5 .in-brand { color: #efe7d9; }
+    [data-linha="indie"] .in-s5 .in-selo { border-color: rgba(239, 231, 217, .55); color: #efe7d9; }
     [data-linha="indie"] .in-s5 .in-block {
       top: 300px; bottom: 130px; display: flex; flex-direction: column; justify-content: center;
     }
@@ -2294,11 +2296,11 @@
   `;
     }
 
-    function buildIndieSlide5(d) {
+    function buildIndieSlide5(d, { paperVars } = {}) {
       const credit = escapeHtml(`${d.artist} · ${[d.album, d.year].filter(Boolean).join(' · ')}`);
       const cta = 'ouça no perfil · link nos comentários';
       return `
-    <div class="slide in-s5" style="${slideStyleVars(4)}">
+    <div class="slide in-s5" style="${slideStyleVars(4)}${paperVars || ''}">
       <div class="grain"></div>
       ${indieBrand()}
       <div class="in-band in-block">
@@ -2346,7 +2348,7 @@
         buildIndieTextSlide(d, { slideClass: 'in-s2 in-dark', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1, paperVars, wmPos: 'left' }),
         buildIndieTextSlide(d, { slideClass: 'in-s3 in-dark', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, paperVars, wmPos: 'right' }),
         buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel, paperVars }),
-        buildIndieSlide5(d),
+        buildIndieSlide5(d, { paperVars }),
       ] : [
         buildSlide1(d),
         buildTextSlide(d, { theme: 'dark', sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1 }),
