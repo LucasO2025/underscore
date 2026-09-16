@@ -1306,10 +1306,12 @@
 
     /* SLIDE 2 — primeira escuta */
     [data-linha="indie"] .in-s2 .in-num { font-size: 168px; }
-    [data-linha="indie"] .in-s2 .in-body {
+    /* corpo sem citação (slide 2 sempre; slide 3 quando não há artistQuote):
+       faixa central com texto centralizado. Vale pros dois via .in-bodyfill. */
+    [data-linha="indie"] .in-bodyfill {
       top: 400px; bottom: 150px; display: flex; align-items: center;
     }
-    [data-linha="indie"] .in-s2 .in-body > div { width: 100%; }
+    [data-linha="indie"] .in-bodyfill > div { width: 100%; }
 
     /* SLIDE 3 — o que passa batido (virada) */
     [data-linha="indie"] .in-s3 { background: var(--paper2); }
@@ -2177,7 +2179,7 @@
         <div class="in-body">${formatIndieBody(body)}</div>
         <div class="in-quote" data-label="${escapeHtml(quoteLabel || 'a artista, sobre a faixa')}">${escapeHtml(quote)}</div>
       </div>`
-        : `<div class="in-band in-body"><div>${formatIndieBody(body)}</div></div>`;
+        : `<div class="in-band in-body in-bodyfill"><div>${formatIndieBody(body)}</div></div>`;
       return `
     <div class="slide ${slideClass}" style="${slideStyleVars(idx)}">
       <div class="grain"></div>
