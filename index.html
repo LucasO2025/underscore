@@ -1229,6 +1229,14 @@
     [data-linha="indie"] .in-dark .in-body { color: #e9e1d2; }
     [data-linha="indie"] .in-dark .in-body em { color: var(--accent-photo); }
     [data-linha="indie"] .in-dark .in-foot { color: #9a8d77; }
+    /* slide 4 escuro: gancho/caption claros, grifo rosa, moldura e bloco de
+       citação com contorno claro pra destacar sobre o fundo escuro */
+    [data-linha="indie"] .in-dark .in-gancho { color: #f4efe4; }
+    [data-linha="indie"] .in-dark .in-caption { color: #cbc0ad; }
+    [data-linha="indie"] .in-dark .in-gancho em,
+    [data-linha="indie"] .in-dark .in-caption em { color: var(--accent-photo); }
+    [data-linha="indie"] .in-dark .in-strip { border-color: rgba(239, 231, 217, .22); }
+    [data-linha="indie"] .in-dark .in-quote { border: 1px solid rgba(239, 231, 217, .16); }
 
     /* marca (esq) + selo de curadoria (dir) — todos os slides.
        Densidade alinhada à linha principal (top-row 54px, 60px de margem). */
@@ -1266,10 +1274,12 @@
       letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
     }
 
-    /* bloco datilografado com a fala do artista (slide 3) */
+    /* bloco datilografado com a fala do artista (slide 4).
+       Texto num claro literal (não var(--paper): esta agora carrega o fundo
+       tingido escuro dos slides). O bloco tem fundo --ink fixo. */
     [data-linha="indie"] .in-quote {
       font-family: 'Space Mono', monospace; font-size: 23px; line-height: 1.5;
-      background: var(--ink); color: var(--paper); padding: 20px 24px;
+      background: #14100c; color: #efe7d9; padding: 20px 24px;
       position: relative;
     }
     [data-linha="indie"] .in-quote::before {
@@ -2249,7 +2259,7 @@
   `;
     }
 
-    function buildIndieSlide4(d, curioY, { quote, quoteLabel } = {}) {
+    function buildIndieSlide4(d, curioY, { quote, quoteLabel, paperVars } = {}) {
       const c = d.slides.curiosity || {};
       const photo = state.curioDataUrl || state.coverDataUrl;
       const strip = photo
@@ -2262,8 +2272,10 @@
       const quoteBlock = quote
         ? `<div class="in-quote" data-label="${escapeHtml(quoteLabel || 'a artista, sobre a faixa')}">${escapeHtml(quote)}</div>`
         : '';
+      // Escuro como 2 e 3, mas com o fundo tingido da capa e SEM marca d'água
+      // (a capa já aparece na moldura da foto).
       return `
-    <div class="slide in-s4" style="${slideStyleVars(3)}">
+    <div class="slide in-s4 in-dark" style="${slideStyleVars(3)}${paperVars || ''}">
       <div class="grain"></div>
       ${indieBrand()}
       <div class="in-head">
@@ -2333,7 +2345,7 @@
         buildIndieSlide1(d, state.coverPhotoY),
         buildIndieTextSlide(d, { slideClass: 'in-s2 in-dark', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1, paperVars, wmPos: 'left' }),
         buildIndieTextSlide(d, { slideClass: 'in-s3 in-dark', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, paperVars, wmPos: 'right' }),
-        buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel }),
+        buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel, paperVars }),
         buildIndieSlide5(d),
       ] : [
         buildSlide1(d),
