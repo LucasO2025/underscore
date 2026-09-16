@@ -1536,6 +1536,11 @@
         </div>
 
         <div class="control-group">
+          <label>Imagem dos slides 2 e 3 (marca d'água indie) — opcional, fallback: capa</label>
+          <input type="file" id="slide23-file" accept="image/*">
+        </div>
+
+        <div class="control-group">
           <label>Foto do slide 4 (curiosidade) — opcional, fallback: capa</label>
           <input type="file" id="curio-file" accept="image/*">
         </div>
@@ -1616,6 +1621,7 @@
       coverFile: document.getElementById('cover-file'),
       coverUrl: document.getElementById('cover-url'),
       curioFile: document.getElementById('curio-file'),
+      slide23File: document.getElementById('slide23-file'),
       accentColor: document.getElementById('accent-color'),
       hexDisplay: document.getElementById('hex-display'),
       autoExtract: document.getElementById('auto-extract'),
@@ -1648,6 +1654,10 @@
       curioDataUrl: null,
       curioDuotoneDataUrl: null,  // duotone da foto (ou da capa, no fallback)
       coverGrayUrl: null,         // capa em P&B (marca d'água indie; P&B embutido pra bater no export)
+      // Imagem dedicada dos slides 2 e 3 (marca d'água indie). Opcional; fallback: capa.
+      slide23Image: null,
+      slide23DataUrl: null,
+      slide23GrayUrl: null,
       coverPhotoY: 50,            // recorte vertical (%) da capa do slide 1: 0=topo, 50=centro, 100=baixo
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
@@ -2274,7 +2284,8 @@
       // vive no slide 4. Fundo tingido pela capa (--paper/--paper2 injetados) +
       // marca d'água com metade da capa (esquerda no 2, direita no 3): ao deslizar
       // 2->3 é uma panorâmica pela capa.
-      const wmSrc = state.coverGrayUrl || state.coverDataUrl;
+      // marca d'água: imagem dedicada dos slides 2/3 se houver, senão a capa.
+      const wmSrc = state.slide23GrayUrl || state.slide23DataUrl || state.coverGrayUrl || state.coverDataUrl;
       const wm = wmSrc
         ? `<div class="in-wm" style="background-image:url('${wmSrc}');background-position:${wmPos || 'center'} center;"></div>`
         : '';
@@ -2626,6 +2637,22 @@
       }
     });
 
+    els.slide23File.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      clearMsgs();
+      try {
+        const { img, dataUrl } = await loadImageFromFile(file);
+        state.slide23Image = img;
+        state.slide23DataUrl = dataUrl;
+        state.slide23GrayUrl = indieGrayCover(img);
+        if (state.data) renderAll();
+        showMsg(`imagem dos slides 2/3 carregada: ${img.naturalWidth}×${img.naturalHeight}px`, 'info');
+      } catch (err) {
+        showMsg(err.message, 'error');
+      }
+    });
+
     /* Recorte vertical das fotos (slide 1 = capa, slide 4 = curiosidade).
        Sliders ficam abaixo de cada card e são recriados a cada renderAll,
        então o listener é delegado. Atualiza background-position direto no
@@ -2801,6 +2828,8 @@
       // Capa em P&B pra marca d'água da linha indie (slides 2 e 3), com o
       // grayscale embutido nos pixels pra bater no export do html2canvas.
       state.coverGrayUrl = state.coverImage ? indieGrayCover(state.coverImage) : null;
+      // Imagem dedicada dos slides 2/3 (se houver) também em P&B.
+      state.slide23GrayUrl = state.slide23Image ? indieGrayCover(state.slide23Image) : null;
 
       // cor de acento normalizada em OKLCh — só usada nos componentes
       // .us-selo e .us-cta da série sugestão de seguidor.
