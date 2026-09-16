@@ -1215,8 +1215,20 @@
        Fica acima do fundo tingido e abaixo do grão/texto. */
     [data-linha="indie"] .in-wm {
       position: absolute; inset: 0; z-index: 0; background-size: cover; pointer-events: none;
-      opacity: .13; filter: grayscale(.35) contrast(1.05);
+      /* sobre fundo escuro, a capa em cinza aparece como luz sutil (partes claras
+         brilham, escuras somem no fundo) — mesma lógica do slide 1 */
+      opacity: .26; filter: grayscale(1) contrast(1.02);
     }
+
+    /* Slides 2 e 3 são ESCUROS por padrão: fundo tingido escuro (--paper/--paper2
+       injetados via JS) + texto claro. Unifica a série com os slides 1 e 5. */
+    [data-linha="indie"] .in-dark { color: #efe7d9; }
+    [data-linha="indie"] .in-dark .in-brand { color: #efe7d9; }
+    [data-linha="indie"] .in-dark .in-num { color: #f4efe4; }
+    [data-linha="indie"] .in-dark .in-lbl { color: var(--red); }
+    [data-linha="indie"] .in-dark .in-body { color: #e9e1d2; }
+    [data-linha="indie"] .in-dark .in-body em { color: var(--accent-photo); }
+    [data-linha="indie"] .in-dark .in-foot { color: #9a8d77; }
 
     /* marca (esq) + selo de curadoria (dir) — todos os slides.
        Densidade alinhada à linha principal (top-row 54px, 60px de margem). */
@@ -1681,12 +1693,13 @@
       return '#' + to(f(0)) + to(f(8)) + to(f(4));
     }
 
-    /* Papel tingido da linha indie (slides 2 e 3): preserva o matiz do acento,
-       força saturação baixa e luminância alta, então o texto escuro (--ink)
-       continua legível em qualquer capa. Devolve os dois tons (paper/paper2). */
-    function indiePaperFromAccent() {
+    /* Fundo escuro tingido da linha indie (slides 2 e 3): preserva o matiz do
+       acento, força luminância baixa. O texto vai claro (.in-dark), então o
+       contraste é alto em qualquer capa e a série conversa com os slides 1 e 5.
+       Devolve os dois tons (paper = slide 2, paper2 = slide 3, um tico mais escuro). */
+    function indieDarkFromAccent() {
       const { h } = hexToHsl(state.accent || '#c23a22');
-      return { light: hslToHex(h, 20, 84), dark: hslToHex(h, 22, 79) };
+      return { a: hslToHex(h, 30, 13), b: hslToHex(h, 33, 10) };
     }
 
     function escapeHtml(s) {
@@ -2313,13 +2326,13 @@
       els.slidesContainer.setAttribute('data-linha', isIndie ? 'indie' : 'principal');
 
       // Fundo tingido pela capa (slides 2 e 3): --paper/--paper2 derivados do acento.
-      const tint = isIndie ? indiePaperFromAccent() : null;
-      const paperVars = tint ? `--paper:${tint.light};--paper2:${tint.dark};` : '';
+      const tint = isIndie ? indieDarkFromAccent() : null;
+      const paperVars = tint ? `--paper:${tint.a};--paper2:${tint.b};` : '';
 
       const slidesHtml = isIndie ? [
         buildIndieSlide1(d, state.coverPhotoY),
-        buildIndieTextSlide(d, { slideClass: 'in-s2', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1, paperVars, wmPos: 'left' }),
-        buildIndieTextSlide(d, { slideClass: 'in-s3', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, paperVars, wmPos: 'right' }),
+        buildIndieTextSlide(d, { slideClass: 'in-s2 in-dark', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1, paperVars, wmPos: 'left' }),
+        buildIndieTextSlide(d, { slideClass: 'in-s3 in-dark', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, paperVars, wmPos: 'right' }),
         buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel }),
         buildIndieSlide5(d),
       ] : [
