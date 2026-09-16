@@ -1211,50 +1211,52 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    /* marca (esq) + selo de curadoria (dir) — todos os slides */
+    /* marca (esq) + selo de curadoria (dir) — todos os slides.
+       Densidade alinhada à linha principal (top-row 54px, 60px de margem). */
     [data-linha="indie"] .in-brand {
-      position: absolute; top: 64px; left: 64px; right: 64px; z-index: 5;
+      position: absolute; top: 54px; left: 60px; right: 60px; z-index: 5;
       display: flex; justify-content: space-between; align-items: flex-start;
-      font-family: 'Space Mono', monospace; font-size: 24px;
+      font-family: 'Space Mono', monospace; font-size: 16px;
       letter-spacing: .15em; text-transform: uppercase; color: var(--ink);
     }
     [data-linha="indie"] .in-brand .in-mark span { color: var(--red); }
     [data-linha="indie"] .in-selo {
-      border: 4px solid var(--red); color: var(--red); padding: 8px 18px;
+      border: 2.5px solid var(--red); color: var(--red); padding: 6px 12px;
       transform: rotate(-3deg); font-weight: 700; letter-spacing: .08em;
       white-space: nowrap; background: transparent;
     }
 
     /* elementos de análise */
     [data-linha="indie"] .in-num {
-      font-family: 'Anton', sans-serif; line-height: .8; color: var(--ink);
+      font-family: 'Anton', sans-serif; line-height: .82; color: var(--ink);
       letter-spacing: .01em;
     }
     [data-linha="indie"] .in-lbl {
-      font-family: 'Space Mono', monospace; font-size: 30px;
+      font-family: 'Space Mono', monospace; font-size: 18px; margin-top: 4px;
       letter-spacing: .04em; color: var(--red); text-transform: lowercase;
     }
-    [data-linha="indie"] .in-body { font-size: 36px; line-height: 1.44; max-width: 900px; }
-    [data-linha="indie"] .in-body p { margin: 0 0 0.7em; }
+    [data-linha="indie"] .in-body { font-size: 30px; line-height: 1.42; letter-spacing: -.005em; }
+    [data-linha="indie"] .in-body p { margin: 0; }
+    [data-linha="indie"] .in-body p + p { margin-top: 0.75em; }
     [data-linha="indie"] .in-body b,
     [data-linha="indie"] .in-body strong { color: var(--redink); font-weight: 600; }
     [data-linha="indie"] .in-body em { color: var(--redink); font-style: italic; }
     [data-linha="indie"] .in-foot {
-      position: absolute; left: 64px; bottom: 46px; z-index: 5;
-      font-family: 'Space Mono', monospace; font-size: 23px;
+      position: absolute; left: 60px; right: 60px; bottom: 54px; z-index: 5;
+      font-family: 'Space Mono', monospace; font-size: 15px;
       letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
     }
 
     /* bloco datilografado com a fala do artista (slide 3) */
     [data-linha="indie"] .in-quote {
-      font-family: 'Space Mono', monospace; font-size: 29px; line-height: 1.5;
-      background: var(--ink); color: var(--paper); padding: 28px 30px;
-      position: relative; max-width: 860px;
+      font-family: 'Space Mono', monospace; font-size: 23px; line-height: 1.5;
+      background: var(--ink); color: var(--paper); padding: 20px 24px;
+      position: relative;
     }
     [data-linha="indie"] .in-quote::before {
       content: attr(data-label);
-      position: absolute; top: -18px; left: 22px; background: var(--red); color: #fff;
-      font-size: 19px; letter-spacing: .1em; padding: 3px 14px; text-transform: uppercase;
+      position: absolute; top: -14px; left: 18px; background: var(--red); color: #fff;
+      font-size: 15px; letter-spacing: .1em; padding: 3px 12px; text-transform: uppercase;
     }
 
     /* SLIDE 1 — abertura / capa */
@@ -1270,71 +1272,83 @@
     [data-linha="indie"] .in-s1 .in-selo { background: var(--red); color: #fff; border-color: var(--red); }
     [data-linha="indie"] .in-s1 .in-brand { color: #fff; }
     [data-linha="indie"] .in-s1 .in-bottom {
-      position: absolute; left: 64px; right: 64px; bottom: 130px; z-index: 5;
+      position: absolute; left: 60px; right: 60px; bottom: 96px; z-index: 5;
     }
     [data-linha="indie"] .in-s1 .in-eyebrow {
-      font-family: 'Space Mono', monospace; font-size: 25px; letter-spacing: .16em;
-      text-transform: uppercase; color: var(--accent-photo); margin-bottom: 26px;
+      font-family: 'Space Mono', monospace; font-size: 18px; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--accent-photo); margin-bottom: 20px;
     }
     [data-linha="indie"] .in-s1 .in-eyebrow::before {
-      content: ''; display: inline-block; width: 40px; height: 4px;
-      background: var(--accent-photo); vertical-align: middle; margin-right: 20px;
+      content: ''; display: inline-block; width: 32px; height: 3px;
+      background: var(--accent-photo); vertical-align: middle; margin-right: 16px;
     }
     [data-linha="indie"] .in-s1 .in-name {
-      font-weight: 800; font-size: 112px; line-height: .92; letter-spacing: -.02em; color: #fff;
+      font-weight: 800; font-size: 92px; line-height: .94; letter-spacing: -.02em; color: #fff;
     }
     [data-linha="indie"] .in-s1 .in-name span { color: var(--accent-photo); }
     [data-linha="indie"] .in-s1 .in-hook {
-      font-size: 40px; line-height: 1.4; color: #efe7e0; margin-top: 30px; max-width: 900px;
+      font-size: 31px; line-height: 1.4; color: #efe7e0; margin-top: 24px; max-width: 840px;
     }
     [data-linha="indie"] .in-s1 .in-hook em {
       color: var(--accent-photo); font-style: normal; border-bottom: 5px solid var(--red);
     }
     [data-linha="indie"] .in-s1 .in-foot { color: rgba(255,255,255,.5); }
 
+    /* Bloco do número (slides 2/3/4), no padrão do num-block da principal. */
+    [data-linha="indie"] .in-head { position: absolute; top: 120px; left: 60px; right: 60px; z-index: 5; }
+
+    /* Corpo em faixa absoluta entre o número e o rodapé, como na principal.
+       overflow:hidden garante que texto extremo corte na faixa em vez de
+       vazar por cima do rodapé. */
+    [data-linha="indie"] .in-band {
+      position: absolute; left: 60px; right: 60px; z-index: 5; overflow: hidden;
+    }
+
     /* SLIDE 2 — primeira escuta */
-    [data-linha="indie"] .in-s2 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
-    [data-linha="indie"] .in-s2 .in-num { font-size: 240px; }
-    [data-linha="indie"] .in-s2 .in-lbl { margin-top: 6px; }
-    [data-linha="indie"] .in-s2 .in-body { position: absolute; top: 560px; left: 64px; right: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s2 .in-num { font-size: 168px; }
+    [data-linha="indie"] .in-s2 .in-body {
+      top: 400px; bottom: 150px; display: flex; align-items: center;
+    }
+    [data-linha="indie"] .in-s2 .in-body > div { width: 100%; }
 
     /* SLIDE 3 — o que passa batido (virada) */
     [data-linha="indie"] .in-s3 { background: var(--paper2); }
-    [data-linha="indie"] .in-s3 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
-    [data-linha="indie"] .in-s3 .in-num { font-size: 240px; }
-    [data-linha="indie"] .in-s3 .in-lbl { margin-top: 6px; }
-    [data-linha="indie"] .in-s3 .in-body { position: absolute; top: 560px; left: 64px; right: 64px; z-index: 5; }
-    [data-linha="indie"] .in-s3 .in-quote { margin-top: 40px; }
+    [data-linha="indie"] .in-s3 .in-num { font-size: 168px; }
+    /* corpo ocupa a faixa entre número e a citação; citação fixa acima do rodapé */
+    [data-linha="indie"] .in-s3 .in-body { top: 400px; bottom: 430px; }
+    [data-linha="indie"] .in-s3 .in-quote {
+      position: absolute; left: 60px; right: 60px; bottom: 150px; z-index: 5;
+    }
 
     /* SLIDE 4 — de onde vem */
-    [data-linha="indie"] .in-s4 .in-head { position: absolute; top: 150px; left: 64px; z-index: 5; }
-    [data-linha="indie"] .in-s4 .in-num { font-size: 168px; }
-    [data-linha="indie"] .in-s4 .in-lbl { margin-top: 6px; }
-    [data-linha="indie"] .in-s4 .in-mid { position: absolute; top: 500px; left: 64px; right: 64px; z-index: 5; }
+    [data-linha="indie"] .in-s4 .in-num { font-size: 132px; }
+    [data-linha="indie"] .in-s4 .in-mid { top: 350px; bottom: 120px; }
     [data-linha="indie"] .in-s4 .in-strip {
-      height: 240px; border: 4px solid var(--ink);
+      height: 210px; border: 3px solid var(--ink);
       background-color: var(--paper2); background-size: cover; background-position: center 50%;
     }
     [data-linha="indie"] .in-s4 .in-wave {
-      display: flex; align-items: flex-end; gap: 5px; height: 64px; margin-top: 30px;
+      display: flex; align-items: flex-end; gap: 5px; height: 56px; margin-top: 26px;
     }
     [data-linha="indie"] .in-s4 .in-wave i { flex: 1; background: var(--red); display: block; }
-    [data-linha="indie"] .in-s4 .in-body { margin-top: 30px; font-size: 34px; line-height: 1.42; }
+    [data-linha="indie"] .in-s4 .in-body { margin-top: 26px; }
 
     /* SLIDE 5 — encerramento */
     [data-linha="indie"] .in-s5 { background: var(--ink); color: var(--paper); }
     [data-linha="indie"] .in-s5 .in-brand { color: var(--paper); }
     [data-linha="indie"] .in-s5 .in-selo { border-color: var(--paper); color: var(--paper); }
-    [data-linha="indie"] .in-s5 .in-block { position: absolute; left: 64px; right: 64px; top: 520px; z-index: 5; }
-    [data-linha="indie"] .in-s5 .in-rule { width: 95px; height: 7px; background: var(--red); margin-bottom: 45px; }
+    [data-linha="indie"] .in-s5 .in-block {
+      top: 300px; bottom: 130px; display: flex; flex-direction: column; justify-content: center;
+    }
+    [data-linha="indie"] .in-s5 .in-rule { width: 80px; height: 6px; background: var(--red); margin-bottom: 36px; }
     [data-linha="indie"] .in-s5 .in-statement {
-      font-weight: 800; font-size: 84px; line-height: 1.02; letter-spacing: -.015em; max-width: 16ch;
+      font-weight: 800; font-size: 58px; line-height: 1.06; letter-spacing: -.015em; max-width: 22ch;
     }
     [data-linha="indie"] .in-s5 .in-statement em,
     [data-linha="indie"] .in-s5 .in-statement span { color: var(--accent-photo); font-style: normal; }
     [data-linha="indie"] .in-s5 .in-sub {
-      font-family: 'Space Mono', monospace; font-size: 27px; line-height: 1.5;
-      margin-top: 40px; color: #b7a992; max-width: 34ch;
+      font-family: 'Space Mono', monospace; font-size: 22px; line-height: 1.5;
+      margin-top: 34px; color: #b7a992; max-width: 40ch;
     }
     [data-linha="indie"] .in-s5 .in-foot { color: #8a7d67; }
 
@@ -2159,7 +2173,8 @@
         <div class="in-num">${num}</div>
         <div class="in-lbl">${escapeHtml(label)}</div>
       </div>
-      <div class="in-body">${formatIndieBody(body)}${quoteBlock}</div>
+      <div class="in-band in-body"><div>${formatIndieBody(body)}</div></div>
+      ${quoteBlock}
       <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
     </div>
   `;
@@ -2180,7 +2195,7 @@
         <div class="in-num">03</div>
         <div class="in-lbl">de onde vem</div>
       </div>
-      <div class="in-mid">
+      <div class="in-band in-mid">
         <div class="in-strip" style="${strip}"></div>
         <div class="in-wave"></div>
         <div class="in-body">${formatIndieBody(bodyText)}</div>
@@ -2192,12 +2207,12 @@
 
     function buildIndieSlide5(d) {
       const credit = escapeHtml(`${d.artist} · ${[d.album, d.year].filter(Boolean).join(' · ')}`);
-      const cta = 'ouça no perfil da artista · link nos comentários';
+      const cta = 'ouça no perfil · link nos comentários';
       return `
     <div class="slide in-s5" style="${slideStyleVars(4)}">
       <div class="grain"></div>
       ${indieBrand()}
-      <div class="in-block">
+      <div class="in-band in-block">
         <div class="in-rule"></div>
         <div class="in-statement">${formatIndieInline(d.slides.closing || '')}</div>
         <div class="in-sub">${credit}<br>${cta}</div>
