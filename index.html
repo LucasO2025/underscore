@@ -1204,20 +1204,22 @@
 
     [data-linha="indie"] .pad { position: absolute; inset: 0; padding: 64px; z-index: 3; }
 
-    /* grão de fotocópia (multiply) sobre cada slide */
+    /* grão de fotocópia. Blend NORMAL (não multiply) com ruído ESCURO: escurece
+       sutilmente e renderiza igual no preview e no export do html2canvas, que
+       não aplica mix-blend-mode (o multiply de antes virava véu claro no PNG). */
     [data-linha="indie"] .grain {
       position: absolute; inset: 0; pointer-events: none; z-index: 4;
-      opacity: .42; mix-blend-mode: multiply;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: .5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
     /* marca d'água: metade da capa apagada atrás do texto (slides 2 e 3).
        Fica acima do fundo tingido e abaixo do grão/texto. */
     [data-linha="indie"] .in-wm {
       position: absolute; inset: 0; z-index: 0; background-size: cover; pointer-events: none;
-      /* sobre fundo escuro, a capa em cinza aparece como luz sutil (partes claras
-         brilham, escuras somem no fundo) — mesma lógica do slide 1 */
-      opacity: .26; filter: grayscale(1) contrast(1.02);
+      /* sobre fundo escuro, a capa (já em P&B, via state.coverGrayUrl) aparece
+         como luz sutil. Sem filter CSS: o html2canvas não o aplica. */
+      opacity: .26;
     }
 
     /* scrim escuro difuso atrás do texto (slides 2/3): escurece/limpa a área de
@@ -1645,6 +1647,7 @@
       curioImage: null,           // HTMLImageElement da foto do slide 4 (opcional)
       curioDataUrl: null,
       curioDuotoneDataUrl: null,  // duotone da foto (ou da capa, no fallback)
+      coverGrayUrl: null,         // capa em P&B (marca d'água indie; P&B embutido pra bater no export)
       coverPhotoY: 50,            // recorte vertical (%) da capa do slide 1: 0=topo, 50=centro, 100=baixo
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
@@ -1966,6 +1969,25 @@
 
     /* Igual ao applyDuotone no dimensionamento, mas sem recolorir: devolve a
        imagem ORIGINAL como data URL (usado quando "capa original" está ligado). */
+    /* Capa em P&B (marca d'água da linha indie). O grayscale é embutido nos
+       pixels via ctx.filter (que rasteriza no canvas), não via filter CSS, que
+       o html2canvas 1.4.1 não aplica — assim o export bate com o preview. */
+    function indieGrayCover(img) {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1200;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.filter = 'grayscale(1) contrast(1.02)';
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      try {
+        return canvas.toDataURL('image/jpeg', 0.9);
+      } catch (e) {
+        return null;
+      }
+    }
+
     function coverPlain(img) {
       const canvas = document.createElement('canvas');
       const maxDim = 1600;
@@ -2252,8 +2274,9 @@
       // vive no slide 4. Fundo tingido pela capa (--paper/--paper2 injetados) +
       // marca d'água com metade da capa (esquerda no 2, direita no 3): ao deslizar
       // 2->3 é uma panorâmica pela capa.
-      const wm = state.coverDataUrl
-        ? `<div class="in-wm" style="background-image:url('${state.coverDataUrl}');background-position:${wmPos || 'center'} center;"></div>`
+      const wmSrc = state.coverGrayUrl || state.coverDataUrl;
+      const wm = wmSrc
+        ? `<div class="in-wm" style="background-image:url('${wmSrc}');background-position:${wmPos || 'center'} center;"></div>`
         : '';
       return `
     <div class="slide ${slideClass}" style="${slideStyleVars(idx)}${paperVars || ''}">
@@ -2774,6 +2797,10 @@
         : applyDuotone(state.coverImage, '#0A0A0A', state.accent);
       if (!cover) return; // já mostrou mensagem em caso de erro (CORS)
       state.duotoneDataUrl = cover;
+
+      // Capa em P&B pra marca d'água da linha indie (slides 2 e 3), com o
+      // grayscale embutido nos pixels pra bater no export do html2canvas.
+      state.coverGrayUrl = state.coverImage ? indieGrayCover(state.coverImage) : null;
 
       // cor de acento normalizada em OKLCh — só usada nos componentes
       // .us-selo e .us-cta da série sugestão de seguidor.
