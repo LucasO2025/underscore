@@ -1313,15 +1313,11 @@
     }
     [data-linha="indie"] .in-bodyfill > div { width: 100%; }
 
-    /* SLIDE 3 — o que passa batido (virada) */
+    /* SLIDE 3 — o que passa batido (virada).
+       Corpo usa a faixa central inteira (.in-bodyfill); a citação do artista
+       foi movida para o slide 4. */
     [data-linha="indie"] .in-s3 { background: var(--paper2); }
     [data-linha="indie"] .in-s3 .in-num { font-size: 168px; }
-    /* corpo + citação numa mesma faixa que flui do topo: a citação vem
-       logo abaixo do texto (curto sobe, longo desce). overflow:hidden
-       (do .in-band) + o limitador de caracteres no generate garantem que
-       nunca invada o rodapé. */
-    [data-linha="indie"] .in-s3col { top: 380px; bottom: 130px; }
-    [data-linha="indie"] .in-s3 .in-quote { margin-top: 34px; }
 
     /* SLIDE 4 — de onde vem */
     [data-linha="indie"] .in-s4 .in-num { font-size: 132px; }
@@ -1334,7 +1330,18 @@
       display: flex; align-items: flex-end; gap: 5px; height: 56px; margin-top: 26px;
     }
     [data-linha="indie"] .in-s4 .in-wave i { flex: 1; background: var(--red); display: block; }
-    [data-linha="indie"] .in-s4 .in-body { margin-top: 26px; }
+    /* gancho em destaque + caption apagado, no padrão da linha cânone */
+    [data-linha="indie"] .in-s4 .in-gancho {
+      margin-top: 26px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600;
+      font-size: 40px; line-height: 1.08; letter-spacing: -.02em; color: var(--ink);
+    }
+    [data-linha="indie"] .in-s4 .in-gancho em { color: var(--redink); font-style: italic; }
+    [data-linha="indie"] .in-s4 .in-caption {
+      margin-top: 16px; font-size: 25px; line-height: 1.4; color: var(--ink2);
+    }
+    [data-linha="indie"] .in-s4 .in-caption em { color: var(--redink); font-style: italic; }
+    /* citação um pouco mais abaixo, pra dar respiro ao slide */
+    [data-linha="indie"] .in-s4 .in-quote { margin-top: 44px; }
 
     /* SLIDE 5 — encerramento */
     [data-linha="indie"] .in-s5 { background: var(--ink); color: var(--paper); }
@@ -1618,11 +1625,6 @@
     };
 
     const BACKEND_URL = 'http://127.0.0.1:8765';
-
-    /* Limite de caracteres do interpretationB na linha indie quando há citação
-       do artista (slide 3): o corpo divide a faixa com o bloco datilografado.
-       Calibrado pra que o texto no limite termine logo acima da citação. */
-    const INDIE_S3_MAXCHARS = 700;
 
     function showMsg(text, type = 'info', ttl = 4500) {
       const el = document.createElement('div');
@@ -2169,17 +2171,9 @@
   `;
     }
 
-    function buildIndieTextSlide(d, { slideClass, num, label, body, idx, quote, quoteLabel }) {
-      // Com citação (slide 3): corpo e citação vivem na mesma faixa que flui
-      // do topo, então a citação fica sempre logo abaixo do texto.
-      // Sem citação (slide 2): corpo centralizado numa faixa maior.
-      const content = quote
-        ? `
-      <div class="in-band in-s3col">
-        <div class="in-body">${formatIndieBody(body)}</div>
-        <div class="in-quote" data-label="${escapeHtml(quoteLabel || 'a artista, sobre a faixa')}">${escapeHtml(quote)}</div>
-      </div>`
-        : `<div class="in-band in-body in-bodyfill"><div>${formatIndieBody(body)}</div></div>`;
+    function buildIndieTextSlide(d, { slideClass, num, label, body, idx }) {
+      // Slides 2 e 3: corpo centralizado na faixa central. A citação do artista
+      // agora vive no slide 4 (buildIndieSlide4), liberando a faixa inteira aqui.
       return `
     <div class="slide ${slideClass}" style="${slideStyleVars(idx)}">
       <div class="grain"></div>
@@ -2188,19 +2182,25 @@
         <div class="in-num">${num}</div>
         <div class="in-lbl">${escapeHtml(label)}</div>
       </div>
-      ${content}
+      <div class="in-band in-body in-bodyfill"><div>${formatIndieBody(body)}</div></div>
       <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
     </div>
   `;
     }
 
-    function buildIndieSlide4(d, curioY) {
+    function buildIndieSlide4(d, curioY, { quote, quoteLabel } = {}) {
       const c = d.slides.curiosity || {};
       const photo = state.curioDataUrl || state.coverDataUrl;
       const strip = photo
         ? `background-image:url('${photo}');background-position:center ${curioY}%;`
         : '';
-      const bodyText = [c.gancho, c.caption].filter(Boolean).join('\n\n');
+      // gancho em destaque (Bricolage grande) + caption apagado, no padrão da
+      // linha cânone (curio-gancho / curio-caption).
+      const gancho = c.gancho ? `<div class="in-gancho">${formatIndieInline(c.gancho)}</div>` : '';
+      const caption = c.caption ? `<div class="in-caption">${formatIndieInline(c.caption)}</div>` : '';
+      const quoteBlock = quote
+        ? `<div class="in-quote" data-label="${escapeHtml(quoteLabel || 'a artista, sobre a faixa')}">${escapeHtml(quote)}</div>`
+        : '';
       return `
     <div class="slide in-s4" style="${slideStyleVars(3)}">
       <div class="grain"></div>
@@ -2212,7 +2212,9 @@
       <div class="in-band in-mid">
         <div class="in-strip" style="${strip}"></div>
         <div class="in-wave"></div>
-        <div class="in-body">${formatIndieBody(bodyText)}</div>
+        ${gancho}
+        ${caption}
+        ${quoteBlock}
       </div>
       <div class="in-foot">${escapeHtml(indieFootText(d))}</div>
     </div>
@@ -2265,8 +2267,8 @@
       const slidesHtml = isIndie ? [
         buildIndieSlide1(d, state.coverPhotoY),
         buildIndieTextSlide(d, { slideClass: 'in-s2', num: '01', label: 'primeira escuta', body: d.slides.interpretationA, idx: 1 }),
-        buildIndieTextSlide(d, { slideClass: 'in-s3', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel }),
-        buildIndieSlide4(d, state.curioPhotoY),
+        buildIndieTextSlide(d, { slideClass: 'in-s3', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2 }),
+        buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel }),
         buildIndieSlide5(d),
       ] : [
         buildSlide1(d),
@@ -2673,13 +2675,6 @@
         if (!state.indieNumber) {
           showMsg('linha indie: informe o nº da indicação (na UI ou via "indicacao_num" no JSON)', 'error');
           return;
-        }
-        // Limitador do slide 3: interpretationB divide a faixa com a citação
-        // do artista. Acima deste limite, o texto empurraria a citação (o
-        // gerador ainda corta com segurança, mas avisa pra cortar no JSON).
-        const bLen = (data.slides.interpretationB || '').length;
-        if (state.data.slides.artistQuote && bLen > INDIE_S3_MAXCHARS) {
-          showMsg(`slide 3 (indie): interpretationB tem ${bLen} caracteres; o limite pra caber com a fala do artista é ${INDIE_S3_MAXCHARS}. Corte ${bLen - INDIE_S3_MAXCHARS}.`, 'error', 8000);
         }
       }
 
