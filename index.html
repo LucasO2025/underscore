@@ -1220,6 +1220,15 @@
       opacity: .26; filter: grayscale(1) contrast(1.02);
     }
 
+    /* scrim escuro difuso atrás do texto (slides 2/3): escurece/limpa a área de
+       leitura sobre a marca d'água e some nas bordas — dá fluidez sem esconder
+       a capa. Radial (não backdrop-filter) pra bater no export do html2canvas. */
+    [data-linha="indie"] .in-tscrim {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: radial-gradient(116% 50% at 50% 60%,
+        rgba(0,0,0,.5) 0%, rgba(0,0,0,.36) 45%, rgba(0,0,0,0) 76%);
+    }
+
     /* Slides 2 e 3 são ESCUROS por padrão: fundo tingido escuro (--paper/--paper2
        injetados via JS) + texto claro. Unifica a série com os slides 1 e 5. */
     [data-linha="indie"] .in-dark { color: #efe7d9; }
@@ -2249,6 +2258,7 @@
       return `
     <div class="slide ${slideClass}" style="${slideStyleVars(idx)}${paperVars || ''}">
       ${wm}
+      <div class="in-tscrim"></div>
       <div class="grain"></div>
       ${indieBrand()}
       <div class="in-head">
