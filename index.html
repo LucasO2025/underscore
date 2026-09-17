@@ -1361,7 +1361,7 @@
 
     /* SLIDE 4 — de onde vem */
     [data-linha="indie"] .in-s4 .in-num { font-size: 132px; }
-    [data-linha="indie"] .in-s4 .in-mid { top: 350px; bottom: 120px; }
+    [data-linha="indie"] .in-s4 .in-mid { top: 300px; bottom: 110px; display: flex; flex-direction: column; }
     [data-linha="indie"] .in-s4 .in-strip {
       height: 320px; border: 3px solid var(--ink);
       background-color: var(--paper2); background-size: cover; background-position: center 50%;
@@ -1371,17 +1371,19 @@
     }
     [data-linha="indie"] .in-s4 .in-wave i { flex: 1; background: var(--red); display: block; }
     /* gancho em destaque + caption apagado, no padrão da linha cânone */
+    /* slide 4 é sempre escuro: gancho/caption claros, grifo em rosa (cores
+       setadas aqui direto pra vencer a ordem do arquivo sobre .in-dark) */
     [data-linha="indie"] .in-s4 .in-gancho {
       margin-top: 26px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600;
-      font-size: 40px; line-height: 1.08; letter-spacing: -.02em; color: var(--ink);
+      font-size: 40px; line-height: 1.08; letter-spacing: -.02em; color: #f4efe4;
     }
-    [data-linha="indie"] .in-s4 .in-gancho em { color: var(--redink); font-style: italic; }
+    [data-linha="indie"] .in-s4 .in-gancho em { color: var(--accent-photo); font-style: italic; }
     [data-linha="indie"] .in-s4 .in-caption {
-      margin-top: 16px; font-size: 25px; line-height: 1.4; color: var(--ink2);
+      margin-top: 16px; font-size: 25px; line-height: 1.4; color: #cbc0ad;
     }
-    [data-linha="indie"] .in-s4 .in-caption em { color: var(--redink); font-style: italic; }
-    /* citação um pouco mais abaixo, pra dar respiro ao slide */
-    [data-linha="indie"] .in-s4 .in-quote { margin-top: 44px; }
+    [data-linha="indie"] .in-s4 .in-caption em { color: var(--accent-photo); font-style: italic; }
+    /* empurra a citação pro rodapé da faixa (mais respiro, menos "espremido") */
+    [data-linha="indie"] .in-s4 .in-quote { margin-top: auto; }
 
     /* SLIDE 5 — encerramento */
     /* fundo tingido da capa (--paper2 injetado), o mais escuro da série; texto
