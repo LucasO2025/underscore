@@ -859,6 +859,30 @@
       color: var(--accent);
     }
 
+    /* ======= D3 · ARTEFATO DE IMPRESSÃO (slides de texto 2 e 3) =======
+       Meio-tom em pontos (normal blend, export-safe) + número/rótulo com a
+       cor "desregistrada" (cópia de acento deslocada via elemento duplicado). */
+    .slide-d3 .p-half {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(circle, rgba(244,241,234,.12) 1.5px, transparent 2px);
+      background-size: 9px 9px;
+    }
+    .slide-d3 .section-num-wrap, .slide-d3 .label-wrap { position: relative; }
+    .slide-d3 .section-num {
+      position: relative; z-index: 2; font-weight: 800; color: var(--off-white);
+      letter-spacing: -0.05em;
+    }
+    .slide-d3 .section-num.ghost {
+      position: absolute; top: 14px; left: 14px; z-index: 1; color: var(--misreg1, var(--accent));
+    }
+    .slide-d3 .accent-line { margin: 26px 0 24px; box-shadow: 8px 8px 0 rgba(244,241,234,.18); }
+    .slide-d3 .section-label {
+      position: relative; z-index: 2; color: var(--off-white); display: inline-block;
+    }
+    .slide-d3 .section-label.ghost {
+      position: absolute; top: 6px; left: 6px; z-index: 1; color: var(--misreg2, var(--accent));
+    }
+
     /* ------- SLIDE 4 : CURIOSIDADE (NOTA TÉCNICA) -------
        Slide visual no padrão do hook: foto duotone em banda + waveform
        (assinatura de áudio) + gancho/caption alinhados à esquerda.
@@ -1700,6 +1724,7 @@
       coverPhotoY: 50,            // recorte vertical (%) da capa do slide 1: 0=topo, 50=centro, 100=baixo
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       slide5PhotoY: 50,           // posição vertical (%) da capa no slide 5 indie (arrastável no preview)
+      principalMisreg: null,      // [cor1, cor2] da paleta da capa pra desregistragem D3 (linha principal)
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
       isFollowerSuggestion: false,
       suggestionNumber: null,
@@ -1774,6 +1799,14 @@
     function indieDarkFromAccent() {
       const { h } = hexToHsl(state.accent || '#c23a22');
       return { a: hslToHex(h, 30, 13), b: hslToHex(h, 33, 10) };
+    }
+
+    /* Preto tingido da LINHA PRINCIPAL (redesign editorial): o #0A0A0A chapado
+       vira um near-black com o matiz do acento — dá assinatura de cor a cada
+       post sem perder o pós-punk. Injetado como --black nos slides. */
+    function principalInkFromAccent() {
+      const { h } = hexToHsl(state.accent || '#E5544D');
+      return hslToHex(h, 32, 6);
     }
 
     function escapeHtml(s) {
@@ -2199,19 +2232,29 @@
   `;
     }
 
-    function buildTextSlide(d, { theme, sectionNum, label, body, slideIdx }) {
-      const themeClass = theme === 'light' ? 'slide-light' : 'slide-dark';
+    function buildTextSlide(d, { sectionNum, label, body, slideIdx, inkVars }) {
+      // D3 · artefato de impressão: fundo tingido, número/rótulo "desregistrados"
+      // (cópia de acento deslocada, via elementos duplicados = export-safe),
+      // meio-tom em pontos. Ambos os slides de texto são escuros.
+      const lbl = escapeHtml(label);
       return `
-    <div class="slide slide-text ${themeClass}" style="${slideStyleVars(slideIdx)}">
+    <div class="slide slide-text slide-dark slide-d3" style="${slideStyleVars(slideIdx)}${inkVars || ''}">
+      <div class="p-half"></div>
       <div class="top-row">
         <span><span class="dot"></span>underscore</span>
         <span>${escapeHtml(String(d.year))}</span>
       </div>
 
       <div class="num-block">
-        <div class="section-num">${sectionNum}</div>
+        <div class="section-num-wrap">
+          <div class="section-num ghost">${sectionNum}</div>
+          <div class="section-num">${sectionNum}</div>
+        </div>
         <div class="accent-line"></div>
-        <div class="section-label">${escapeHtml(label)}</div>
+        <div class="label-wrap">
+          <div class="section-label ghost">${lbl}</div>
+          <div class="section-label">${lbl}</div>
+        </div>
       </div>
 
       <div class="body"><div>${formatBody(body)}</div></div>
@@ -2445,13 +2488,20 @@
         buildIndieTextSlide(d, { slideClass: 'in-s3 in-dark', num: '02', label: 'o que passa batido', body: d.slides.interpretationB, idx: 2, paperVars, wmPos: 'right' }),
         buildIndieSlide4(d, state.curioPhotoY, { quote: (d.slides.artistQuote || ''), quoteLabel: d.slides.artistQuoteLabel, paperVars }),
         buildIndieSlide5(d, { paperVars, slide5Y: state.slide5PhotoY }),
-      ] : [
-        buildSlide1(d),
-        buildTextSlide(d, { theme: 'dark', sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1 }),
-        buildTextSlide(d, { theme: 'light', sectionNum: '02', label: 'CAMADA', body: d.slides.interpretationB, slideIdx: 2 }),
-        buildCuriositySlide(d),
-        buildSlide5(d),
-      ];
+      ] : (() => {
+        // Redesign editorial da principal: fundo tingido pela capa (--black
+        // injetado) + slides de texto em D3 (tipografia desregistrada, cujas
+        // cores de "chapa" seguem a paleta da capa).
+        const mis = state.principalMisreg || [state.accent, state.accent];
+        const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};`;
+        return [
+          buildSlide1(d),
+          buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
+          buildTextSlide(d, { sectionNum: '02', label: 'CAMADA', body: d.slides.interpretationB, slideIdx: 2, inkVars }),
+          buildCuriositySlide(d),
+          buildSlide5(d),
+        ];
+      })();
 
       // Stage oculto com os slides em 1080x1350 reais (para exportação)
       els.renderStage.innerHTML = slidesHtml.map((html, i) =>
@@ -2908,6 +2958,14 @@
       state.coverGrayUrl = state.coverImage ? indieGrayCover(state.coverImage) : null;
       // Imagem dedicada dos slides 2/3 (se houver) também em P&B.
       state.slide23GrayUrl = state.slide23Image ? indieGrayCover(state.slide23Image) : null;
+
+      // Cores de destaque da capa pra desregistragem D3 (linha principal):
+      // duas cores da paleta (riso de 2 chapas). Seguem a CAPA, não o acento.
+      const pal = state.coverImage ? extractPalette(state.coverImage, 3) : [];
+      state.principalMisreg = [
+        (pal[0] && pal[0].hex) || state.accent,
+        (pal[1] && pal[1].hex) || (pal[0] && pal[0].hex) || state.accent,
+      ];
 
       // cor de acento normalizada em OKLCh — só usada nos componentes
       // .us-selo e .us-cta da série sugestão de seguidor.
