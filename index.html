@@ -1382,8 +1382,8 @@
       margin-top: 16px; font-size: 25px; line-height: 1.4; color: #cbc0ad;
     }
     [data-linha="indie"] .in-s4 .in-caption em { color: var(--accent-photo); font-style: italic; }
-    /* empurra a citação pro rodapé da faixa (mais respiro, menos "espremido") */
-    [data-linha="indie"] .in-s4 .in-quote { margin-top: auto; }
+    /* citação separada do texto (margin-top:auto) mas erguida do rodapé */
+    [data-linha="indie"] .in-s4 .in-quote { margin-top: auto; margin-bottom: 90px; }
 
     /* SLIDE 5 — encerramento */
     /* fundo tingido da capa (--paper2 injetado), o mais escuro da série; texto
@@ -1391,19 +1391,30 @@
     [data-linha="indie"] .in-s5 { background: var(--paper2); color: #efe7d9; }
     [data-linha="indie"] .in-s5 .in-brand { color: #efe7d9; }
     [data-linha="indie"] .in-s5 .in-selo { border-color: rgba(239, 231, 217, .55); color: #efe7d9; }
-    /* capa preenchendo o topo, arrastável no preview (pan vertical) */
+    /* capa na diagonal \ (mais capa à direita), arrastável (pan vertical).
+       A diagonal é feita por um retângulo sólido rotacionado (.in-s5cut) que
+       cobre a parte ABAIXO da linha — clip-path não sobrevive ao html2canvas,
+       transform:rotate sim. */
     [data-linha="indie"] .in-s5 .in-s5cover {
-      position: absolute; top: 0; left: 0; right: 0; height: 620px; z-index: 0;
+      position: absolute; top: 0; left: 0; right: 0; height: 700px; z-index: 0;
       background-size: cover; cursor: grab; touch-action: none;
     }
     [data-linha="indie"] .in-s5 .in-s5cover:active { cursor: grabbing; }
+    /* corte diagonal via gradiente de parada dura (sem transform, que quebra o
+       texto no html2canvas): acima-direita do \ = transparente (capa aparece),
+       abaixo-esquerda = fundo tingido. Ângulo 204deg dá a inclinação do \. */
+    [data-linha="indie"] .in-s5 .in-s5cut {
+      position: absolute; top: 0; left: 0; right: 0; height: 700px;
+      z-index: 1; pointer-events: none;
+      background: linear-gradient(204deg, transparent 0 54%, var(--paper2) 54%);
+    }
+    /* scrim no topo da capa, pra marca/selo legíveis */
     [data-linha="indie"] .in-s5 .in-s5fade {
-      position: absolute; top: 0; left: 0; right: 0; height: 620px; z-index: 1; pointer-events: none;
-      background: linear-gradient(to bottom,
-        rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 52%, var(--paper2) 100%);
+      position: absolute; top: 0; left: 0; right: 0; height: 200px; z-index: 2; pointer-events: none;
+      background: linear-gradient(to bottom, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 100%);
     }
     [data-linha="indie"] .in-s5 .in-block {
-      top: 660px; bottom: 120px; display: flex; flex-direction: column; justify-content: center;
+      top: 500px; bottom: 110px; display: flex; flex-direction: column; justify-content: flex-start;
     }
     [data-linha="indie"] .in-s5 .in-rule { width: 80px; height: 6px; background: var(--red); margin-bottom: 36px; }
     [data-linha="indie"] .in-s5 .in-statement {
@@ -2360,7 +2371,7 @@
       // Capa (a mesma do slide 1) preenche o topo; arrastável no preview pra
       // posicionar (pan vertical). Fade pro fundo tingido embaixo.
       const cover = state.coverDataUrl
-        ? `<div class="in-s5cover" style="background-image:url('${state.coverDataUrl}');background-position:center ${slide5Y != null ? slide5Y : 50}%;"></div><div class="in-s5fade"></div>`
+        ? `<div class="in-s5cover" style="background-image:url('${state.coverDataUrl}');background-position:center ${slide5Y != null ? slide5Y : 50}%;"></div><div class="in-s5cut"></div><div class="in-s5fade"></div>`
         : '';
       return `
     <div class="slide in-s5" style="${slideStyleVars(4)}${paperVars || ''}">
