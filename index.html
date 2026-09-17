@@ -733,7 +733,20 @@
       color: var(--accent);
     }
 
-    /* ------- SLIDES 2/3/4 : TEXTO -------
+    /* ======= D2 · PÔSTER DUOTONE (slide 1) =======
+       A capa em duotone preenche o slide inteiro; scrim escurece topo e base
+       pra legibilidade, deixando a arte do disco respirar no meio. */
+    .slide-1.slide-d2 .cover-img { height: 1350px; }
+    .slide-1.slide-d2 .cover-fade {
+      top: 0; height: 1350px;
+      background: linear-gradient(to top,
+        rgba(0,0,0,.95) 0%, rgba(0,0,0,.68) 24%, rgba(0,0,0,0) 50%,
+        rgba(0,0,0,0) 82%, rgba(0,0,0,.5) 100%);
+    }
+    .slide-1.slide-d2 .bottom-area {
+      top: 700px; bottom: 0; justify-content: flex-end; gap: 34px;
+    }
+    .slide-1.slide-d2 .hook { text-shadow: 0 2px 30px rgba(0,0,0,.55); }
      Layout com header/foot fixos e body centralizado verticalmente
      no espaço intermediário. Garante consistência entre slides:
      o número 01/02/03 sempre na mesma posição, body respirando
@@ -2205,7 +2218,7 @@
   `;
     }
 
-    function buildSlide1(d) {
+    function buildSlide1(d, inkVars) {
       const isSugg = state.isFollowerSuggestion;
       const num = String(state.suggestionNumber || 0).padStart(3, '0');
 
@@ -2229,7 +2242,7 @@
       <div class="cover-fade"></div>`;
 
       return `
-    <div class="slide slide-1" style="${slideStyleVars(0)}">
+    <div class="slide slide-1 slide-d2" style="${slideStyleVars(0)}${inkVars || ''}">
       ${bgMarkup}
       ${topBar}
 
@@ -2511,7 +2524,7 @@
         const mis = state.principalMisreg || [state.accent, state.accent];
         const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};`;
         return [
-          buildSlide1(d),
+          buildSlide1(d, inkVars),
           buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
           buildTextSlide(d, { sectionNum: '02', label: 'CAMADA', body: d.slides.interpretationB, slideIdx: 2, inkVars }),
           buildCuriositySlide(d),
