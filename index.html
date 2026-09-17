@@ -1086,6 +1086,16 @@
       color: var(--accent);
     }
 
+    /* ======= D2 · PÔSTER DUOTONE (slide 4) =======
+       Capa em duotone tela cheia; número no topo, waveform + texto reversados
+       na base sobre o scrim. A waveform (assinatura) fica sobre a arte. */
+    .slide-curio.slide-d2 .curio-photo { top: 0; left: 0; right: 0; height: 1350px; }
+    .slide-curio.slide-d2 .curio-photo::after {
+      background: linear-gradient(to bottom,
+        rgba(10,10,10,.85) 0%, rgba(10,10,10,0) 24%, rgba(10,10,10,0) 40%,
+        rgba(10,10,10,.88) 56%, rgba(10,10,10,.96) 100%);
+    }
+
     /* ------- SLIDE 5 : ENCERRAMENTO ------- */
     .slide-5 {
       padding: 72px 60px;
@@ -1153,6 +1163,22 @@
       content: "_";
       color: var(--accent);
     }
+
+    /* ======= D2 · PÔSTER DUOTONE (slide 5) =======
+       Capa em duotone tela cheia; closing reversado na base sobre o scrim. */
+    .slide-5.slide-d2 .cover-img {
+      position: absolute; inset: 0; background-size: cover; background-repeat: no-repeat; z-index: 0;
+    }
+    .slide-5.slide-d2 .cover-fade {
+      position: absolute; inset: 0; z-index: 0;
+      background: linear-gradient(to top,
+        rgba(0,0,0,.95) 0%, rgba(0,0,0,.62) 26%, rgba(0,0,0,0) 54%, rgba(0,0,0,.5) 100%);
+    }
+    .slide-5.slide-d2 .top-row,
+    .slide-5.slide-d2 .closing-block,
+    .slide-5.slide-d2 .foot-row { position: relative; z-index: 2; }
+    .slide-5.slide-d2 .closing-block { margin-top: auto; margin-bottom: 0; }
+    .slide-5.slide-d2 .outro { text-shadow: 0 2px 30px rgba(0,0,0,.55); }
 
     /* ============================================================
        WAVEFORM — GERAR A PARTIR DA MÚSICA (UI)
@@ -2181,7 +2207,7 @@
       return `<div class="waveform">${bars}</div>`;
     }
 
-    function buildCuriositySlide(d) {
+    function buildCuriositySlide(d, inkVars) {
       const c = d.slides.curiosity;
       const photo = state.curioDuotoneDataUrl || state.duotoneDataUrl;
       const photoStyle = photo
@@ -2190,7 +2216,7 @@
       const media = `<div class="curio-photo" style="${photoStyle}"></div>`;
 
       return `
-    <div class="slide slide-curio" style="${slideStyleVars(3)}">
+    <div class="slide slide-curio slide-d2" style="${slideStyleVars(3)}${inkVars || ''}">
       ${media}
       <div class="top-row">
         <span><span class="dot"></span>underscore</span>
@@ -2296,7 +2322,7 @@
   `;
     }
 
-    function buildSlide5(d) {
+    function buildSlide5(d, inkVars) {
       const isSugg = state.isFollowerSuggestion;
 
       const cta = isSugg
@@ -2308,8 +2334,13 @@
         </div>`
         : '';
 
+      const bgMarkup = state.duotoneDataUrl
+        ? `<div class="cover-img" style="background-image:url('${state.duotoneDataUrl}');background-position:center 50%;"></div><div class="cover-fade"></div>`
+        : '';
+
       return `
-    <div class="slide slide-5 slide-dark" style="${slideStyleVars(4)}">
+    <div class="slide slide-5 slide-dark slide-d2" style="${slideStyleVars(4)}${inkVars || ''}">
+      ${bgMarkup}
       <div class="top-row">
         <span><span class="dot"></span>underscore</span>
         <span>FIM</span>
@@ -2527,8 +2558,8 @@
           buildSlide1(d, inkVars),
           buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
           buildTextSlide(d, { sectionNum: '02', label: 'CAMADA', body: d.slides.interpretationB, slideIdx: 2, inkVars }),
-          buildCuriositySlide(d),
-          buildSlide5(d),
+          buildCuriositySlide(d, inkVars),
+          buildSlide5(d, inkVars),
         ];
       })();
 
