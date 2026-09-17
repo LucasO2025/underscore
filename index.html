@@ -2803,6 +2803,17 @@
       const c2 = (pal[1] && pal[1].hex) || (pal[0] && pal[0].hex) || state.accent;
       applyMisreg(c1, c2);
     }
+    /* 2ª cor da desregistragem derivada do acento (matiz deslocado): mantém o
+       efeito de 2 chapas quando a desregistragem segue o acento. */
+    function deriveMisreg2(hex) {
+      const { h, s, l } = hexToHsl(hex);
+      return hslToHex((h + 32) % 360, Math.max(38, s), Math.min(64, Math.max(46, l)));
+    }
+    /* Aplica a desregistragem derivada do acento (número = acento, rótulo = 2ª
+       cor). Usada quando o usuário muda o acento. */
+    function misregFromAccent() {
+      applyMisreg(state.accent, deriveMisreg2(state.accent));
+    }
     els.misreg1.addEventListener('input', (e) => {
       applyMisreg(e.target.value, (state.principalMisreg && state.principalMisreg[1]) || e.target.value);
     });
@@ -2889,12 +2900,17 @@
     document.addEventListener('pointerup', () => { s5drag = null; });
     document.addEventListener('pointercancel', () => { s5drag = null; });
 
+    let accentTimer = null;
     els.accentColor.addEventListener('input', (e) => {
       state.accent = e.target.value;
       els.hexDisplay.textContent = state.accent.toUpperCase();
       // mantém o destaque "active" da paleta em sincronia (apaga se não
       // bater com nenhum swatch)
       if (state.palette.length) renderPalette();
+      // desregistragem (principal) acompanha o acento — debounce pra não
+      // re-renderizar a cada evento durante o arraste da cor.
+      clearTimeout(accentTimer);
+      accentTimer = setTimeout(() => misregFromAccent(), 120);
     });
 
     els.coverOriginal.addEventListener('change', (e) => {
@@ -2950,6 +2966,8 @@
       els.accentColor.value = hex;
       els.hexDisplay.textContent = hex.toUpperCase();
       renderPalette(); // só pra atualizar o estado .active dos swatches
+      // desregistragem (principal) acompanha o acento automaticamente
+      misregFromAccent();
     }
 
     els.autoExtract.addEventListener('click', () => {
