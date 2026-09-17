@@ -1599,6 +1599,17 @@
         </div>
 
         <div class="control-group">
+          <label>Desregistragem — slides de texto (linha principal)</label>
+          <div class="color-row">
+            <input type="color" id="misreg1" value="#E5544D" title="cor atrás do número">
+            <span class="hex-display" id="misreg1-hex">#E5544D</span>
+            <input type="color" id="misreg2" value="#E5544D" title="cor atrás do rótulo">
+            <span class="hex-display" id="misreg2-hex">#E5544D</span>
+            <button class="ghost small" id="misreg-extract" type="button">puxar da capa</button>
+          </div>
+        </div>
+
+        <div class="control-group">
           <label>Imagem dos slides 2 e 3 (marca d'água indie) — opcional, fallback: capa</label>
           <input type="file" id="slide23-file" accept="image/*">
         </div>
@@ -1685,6 +1696,11 @@
       coverUrl: document.getElementById('cover-url'),
       curioFile: document.getElementById('curio-file'),
       slide23File: document.getElementById('slide23-file'),
+      misreg1: document.getElementById('misreg1'),
+      misreg2: document.getElementById('misreg2'),
+      misreg1Hex: document.getElementById('misreg1-hex'),
+      misreg2Hex: document.getElementById('misreg2-hex'),
+      misregExtract: document.getElementById('misreg-extract'),
       accentColor: document.getElementById('accent-color'),
       hexDisplay: document.getElementById('hex-display'),
       autoExtract: document.getElementById('auto-extract'),
@@ -2705,6 +2721,7 @@
         state.coverImage = img;
         state.coverDataUrl = dataUrl;
         state.palette = []; renderPalette(); // paleta antiga não vale mais
+        autoMisregFromCover(); // cores da desregistragem (principal) puxam da nova capa
         showMsg(`capa carregada: ${img.naturalWidth}×${img.naturalHeight}px`, 'info');
       } catch (err) {
         showMsg(err.message, 'error');
@@ -2720,10 +2737,37 @@
         state.coverImage = img;
         state.coverDataUrl = dataUrl;
         state.palette = []; renderPalette();
+        autoMisregFromCover();
         showMsg(`capa carregada: ${img.naturalWidth}×${img.naturalHeight}px`, 'info');
       } catch (err) {
         showMsg(err.message, 'error');
       }
+    });
+
+    /* Desregistragem D3 (linha principal): cores puxadas da paleta da capa,
+       mas editáveis manualmente nos dois seletores. */
+    function applyMisreg(c1, c2) {
+      state.principalMisreg = [c1, c2];
+      els.misreg1.value = c1; els.misreg1Hex.textContent = c1.toUpperCase();
+      els.misreg2.value = c2; els.misreg2Hex.textContent = c2.toUpperCase();
+      if (state.data) renderAll();
+    }
+    function autoMisregFromCover() {
+      if (!state.coverImage) return;
+      const pal = extractPalette(state.coverImage, 3);
+      const c1 = (pal[0] && pal[0].hex) || state.accent;
+      const c2 = (pal[1] && pal[1].hex) || (pal[0] && pal[0].hex) || state.accent;
+      applyMisreg(c1, c2);
+    }
+    els.misreg1.addEventListener('input', (e) => {
+      applyMisreg(e.target.value, (state.principalMisreg && state.principalMisreg[1]) || e.target.value);
+    });
+    els.misreg2.addEventListener('input', (e) => {
+      applyMisreg((state.principalMisreg && state.principalMisreg[0]) || e.target.value, e.target.value);
+    });
+    els.misregExtract.addEventListener('click', () => {
+      if (!state.coverImage) { showMsg('carregue a capa antes de puxar as cores', 'error'); return; }
+      autoMisregFromCover();
     });
 
     els.curioFile.addEventListener('change', async (e) => {
@@ -2960,12 +3004,9 @@
       state.slide23GrayUrl = state.slide23Image ? indieGrayCover(state.slide23Image) : null;
 
       // Cores de destaque da capa pra desregistragem D3 (linha principal):
-      // duas cores da paleta (riso de 2 chapas). Seguem a CAPA, não o acento.
-      const pal = state.coverImage ? extractPalette(state.coverImage, 3) : [];
-      state.principalMisreg = [
-        (pal[0] && pal[0].hex) || state.accent,
-        (pal[1] && pal[1].hex) || (pal[0] && pal[0].hex) || state.accent,
-      ];
+      // normalmente já vêm da carga da capa (autoMisregFromCover) e podem ter
+      // sido editadas à mão. Só extrai aqui se ainda não houver nenhuma.
+      if (!state.principalMisreg && state.coverImage) autoMisregFromCover();
 
       // cor de acento normalizada em OKLCh — só usada nos componentes
       // .us-selo e .us-cta da série sugestão de seguidor.
