@@ -1400,13 +1400,28 @@
       background-size: cover; cursor: grab; touch-action: none;
     }
     [data-linha="indie"] .in-s5 .in-s5cover:active { cursor: grabbing; }
-    /* corte diagonal via gradiente de parada dura (sem transform, que quebra o
-       texto no html2canvas): acima-direita do \ = transparente (capa aparece),
-       abaixo-esquerda = fundo tingido. Ângulo 204deg dá a inclinação do \. */
+    /* corte diagonal via gradiente (sem transform, que quebra o texto no
+       html2canvas; clip-path é ignorado). Topo: acima-direita do \ = capa,
+       abaixo = fundo. Fade curto na borda (mantém a cara de recorte). */
     [data-linha="indie"] .in-s5 .in-s5cut {
       position: absolute; top: 0; left: 0; right: 0; height: 700px;
       z-index: 1; pointer-events: none;
-      background: linear-gradient(204deg, transparent 0 54%, var(--paper2) 54%);
+      background: linear-gradient(204deg, transparent 0 52%, var(--paper2) 60%);
+    }
+    /* cunha inferior direita (eco subordinado): capa menor + apagada, cortada
+       pela diagonal / (espelho do topo). */
+    [data-linha="indie"] .in-s5 .in-s5cover2 {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 360px; z-index: 0;
+      background-size: cover; opacity: .5;
+    }
+    [data-linha="indie"] .in-s5 .in-s5cut2 {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 360px; z-index: 1; pointer-events: none;
+      background: linear-gradient(156deg, var(--paper2) 0 56%, transparent 72%);
+    }
+    /* scrim no rodapé, pra leitura do crédito sobre a cunha de baixo */
+    [data-linha="indie"] .in-s5 .in-s5botscrim {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 130px; z-index: 3; pointer-events: none;
+      background: linear-gradient(to top, var(--paper2) 8%, rgba(0,0,0,0) 100%);
     }
     /* scrim no topo da capa, pra marca/selo legíveis */
     [data-linha="indie"] .in-s5 .in-s5fade {
@@ -2370,8 +2385,14 @@
       const cta = 'ouça no perfil · link nos comentários';
       // Capa (a mesma do slide 1) preenche o topo; arrastável no preview pra
       // posicionar (pan vertical). Fade pro fundo tingido embaixo.
+      const y5 = slide5Y != null ? slide5Y : 50;
       const cover = state.coverDataUrl
-        ? `<div class="in-s5cover" style="background-image:url('${state.coverDataUrl}');background-position:center ${slide5Y != null ? slide5Y : 50}%;"></div><div class="in-s5cut"></div><div class="in-s5fade"></div>`
+        ? `<div class="in-s5cover" style="background-image:url('${state.coverDataUrl}');background-position:center ${y5}%;"></div>`
+          + `<div class="in-s5cut"></div>`
+          + `<div class="in-s5cover2" style="background-image:url('${state.coverDataUrl}');background-position:center ${y5}%;"></div>`
+          + `<div class="in-s5cut2"></div>`
+          + `<div class="in-s5botscrim"></div>`
+          + `<div class="in-s5fade"></div>`
         : '';
       return `
     <div class="slide in-s5" style="${slideStyleVars(4)}${paperVars || ''}">
@@ -2723,7 +2744,7 @@
       let pct = s5drag.startPct - (dy / s5drag.overflow) * 100;
       pct = Math.max(0, Math.min(100, Math.round(pct)));
       state.slide5PhotoY = pct;
-      document.querySelectorAll('.in-s5cover').forEach(el => {
+      document.querySelectorAll('.in-s5cover, .in-s5cover2').forEach(el => {
         if (el.style.backgroundImage) el.style.backgroundPosition = `center ${pct}%`;
       });
     });
