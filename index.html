@@ -905,7 +905,7 @@
       position: absolute; top: 150px; left: 0; right: 0; height: 22px; background: var(--bars, var(--accent)); z-index: 2;
     }
     .slide-f1 .num-block { top: 112px; left: 52px; right: auto; }
-    .slide-f1 .section-num { font-size: 260px; line-height: .8; z-index: 4; }
+    .slide-f1 .section-num { font-size: 260px; line-height: .8; z-index: 5; }
     .slide-f1 .section-num.ghost { z-index: 3; }
     .slide-f1 .f1-spine {
       position: absolute; left: 60px; top: 470px; bottom: 150px; width: 12px; background: var(--bars, var(--accent)); z-index: 6;
@@ -917,12 +917,13 @@
     }
     .slide-f1 .body { left: 104px; right: 132px; top: 470px; bottom: 150px; z-index: 6; }
     .slide-f1 .top-row, .slide-f1 .foot-row { z-index: 7; }
-    /* sobreimpressão: onde o número cruza a barra, mostra a cor de mistura.
-       recorte na faixa exata da barra (top 150, altura 22), com uma cópia do
-       número alinhada. export-safe (sem blend). */
-    .slide-f1 .f1-cross { position: absolute; top: 150px; left: 0; right: 0; height: 22px; overflow: hidden; z-index: 5; }
+    /* sobreimpressão: só onde a cópia DESREGISTRADA (fantasma, deslocado +14/+14)
+       cruza a barra vira a cor de mistura — pontinhos, não o número inteiro.
+       O verde fica na posição do fantasma, atrás do número branco (z4 < 5),
+       recortado na faixa da barra. export-safe (recorte + texto). */
+    .slide-f1 .f1-cross { position: absolute; top: 150px; left: 0; right: 0; height: 22px; overflow: hidden; z-index: 4; }
     .slide-f1 .f1-crossnum {
-      position: absolute; top: -38px; left: 52px;
+      position: absolute; top: -24px; left: 66px;
       font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 260px;
       line-height: .8; letter-spacing: -.05em; color: var(--cross, var(--accent));
     }
