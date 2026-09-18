@@ -896,6 +896,28 @@
       position: absolute; top: 6px; left: 6px; z-index: 1; color: var(--misreg2, var(--accent));
     }
 
+    /* ======= F1 · MOBÍLIA BRODY (layout dos slides de texto) =======
+       Número-forma gigante + barra pesada de accent + rótulo na vertical +
+       espinha de accent na lateral do corpo. Herda a desregistragem e o
+       meio-tom do D3. O corpo do texto não muda. */
+    .slide-f1 .p-half { z-index: 0; }
+    .slide-f1 .f1-bar {
+      position: absolute; top: 150px; left: 0; right: 0; height: 22px; background: var(--accent); z-index: 2;
+    }
+    .slide-f1 .num-block { top: 112px; left: 52px; right: auto; }
+    .slide-f1 .section-num { font-size: 260px; line-height: .8; z-index: 4; }
+    .slide-f1 .section-num.ghost { z-index: 3; }
+    .slide-f1 .f1-spine {
+      position: absolute; left: 60px; top: 470px; bottom: 150px; width: 12px; background: var(--accent); z-index: 6;
+    }
+    .slide-f1 .label-wrap { position: absolute; top: 470px; right: 66px; z-index: 6; }
+    .slide-f1 .section-label {
+      writing-mode: vertical-rl; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      font-size: 24px; letter-spacing: .34em;
+    }
+    .slide-f1 .body { left: 104px; right: 132px; top: 470px; bottom: 150px; z-index: 6; }
+    .slide-f1 .top-row, .slide-f1 .foot-row { z-index: 7; }
+
     /* ------- SLIDE 4 : CURIOSIDADE (NOTA TÉCNICA) -------
        Slide visual no padrão do hook: foto duotone em banda + waveform
        (assinatura de áudio) + gancho/caption alinhados à esquerda.
@@ -2288,13 +2310,15 @@
     }
 
     function buildTextSlide(d, { sectionNum, label, body, slideIdx, inkVars }) {
-      // D3 · artefato de impressão: fundo tingido, número/rótulo "desregistrados"
-      // (cópia de acento deslocada, via elementos duplicados = export-safe),
-      // meio-tom em pontos. Ambos os slides de texto são escuros.
+      // F1 · mobília Brody sobre texto intacto: número-forma gigante + barra
+      // pesada + rótulo na vertical + espinha de accent, tudo com a
+      // desregistragem (cores da capa) e o meio-tom da base D3. O CORPO do
+      // texto não muda em nada.
       const lbl = escapeHtml(label);
       return `
-    <div class="slide slide-text slide-dark slide-d3" style="${slideStyleVars(slideIdx)}${inkVars || ''}">
+    <div class="slide slide-text slide-dark slide-d3 slide-f1" style="${slideStyleVars(slideIdx)}${inkVars || ''}">
       <div class="p-half"></div>
+      <div class="f1-bar"></div>
       <div class="top-row">
         <span><span class="dot"></span>underscore</span>
         <span>${escapeHtml(String(d.year))}</span>
@@ -2305,11 +2329,12 @@
           <div class="section-num ghost">${sectionNum}</div>
           <div class="section-num">${sectionNum}</div>
         </div>
-        <div class="accent-line"></div>
-        <div class="label-wrap">
-          <div class="section-label ghost">${lbl}</div>
-          <div class="section-label">${lbl}</div>
-        </div>
+      </div>
+
+      <div class="f1-spine"></div>
+      <div class="label-wrap">
+        <div class="section-label ghost">${lbl}</div>
+        <div class="section-label">${lbl}</div>
       </div>
 
       <div class="body"><div>${formatBody(body)}</div></div>
