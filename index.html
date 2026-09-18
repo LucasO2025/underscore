@@ -902,13 +902,13 @@
        meio-tom do D3. O corpo do texto não muda. */
     .slide-f1 .p-half { z-index: 0; }
     .slide-f1 .f1-bar {
-      position: absolute; top: 150px; left: 0; right: 0; height: 22px; background: var(--accent); z-index: 2;
+      position: absolute; top: 150px; left: 0; right: 0; height: 22px; background: var(--bars, var(--accent)); z-index: 2;
     }
     .slide-f1 .num-block { top: 112px; left: 52px; right: auto; }
     .slide-f1 .section-num { font-size: 260px; line-height: .8; z-index: 4; }
     .slide-f1 .section-num.ghost { z-index: 3; }
     .slide-f1 .f1-spine {
-      position: absolute; left: 60px; top: 470px; bottom: 150px; width: 12px; background: var(--accent); z-index: 6;
+      position: absolute; left: 60px; top: 470px; bottom: 150px; width: 12px; background: var(--bars, var(--accent)); z-index: 6;
     }
     .slide-f1 .label-wrap { position: absolute; top: 470px; right: 66px; z-index: 6; }
     .slide-f1 .section-label {
@@ -1671,6 +1671,18 @@
         </div>
 
         <div class="control-group">
+          <label>Cor das barras/linhas (F1) — círculo cromático</label>
+          <div class="color-row">
+            <select id="bars-mode" class="ghost">
+              <option value="complementar">complementar (oposto)</option>
+              <option value="analoga">análoga (vizinha)</option>
+            </select>
+            <input type="color" id="bars-color" value="#30C0D0" title="cor das barras">
+            <span class="hex-display" id="bars-hex">#30C0D0</span>
+          </div>
+        </div>
+
+        <div class="control-group">
           <label>Imagem dos slides 2 e 3 (marca d'água indie) — opcional, fallback: capa</label>
           <input type="file" id="slide23-file" accept="image/*">
         </div>
@@ -1762,6 +1774,9 @@
       misreg1Hex: document.getElementById('misreg1-hex'),
       misreg2Hex: document.getElementById('misreg2-hex'),
       misregExtract: document.getElementById('misreg-extract'),
+      barsColor: document.getElementById('bars-color'),
+      barsHex: document.getElementById('bars-hex'),
+      barsMode: document.getElementById('bars-mode'),
       accentColor: document.getElementById('accent-color'),
       hexDisplay: document.getElementById('hex-display'),
       autoExtract: document.getElementById('auto-extract'),
@@ -1802,6 +1817,8 @@
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       slide5PhotoY: 50,           // posição vertical (%) da capa no slide 5 indie (arrastável no preview)
       principalMisreg: null,      // [cor1, cor2] da paleta da capa pra desregistragem D3 (linha principal)
+      principalBars: null,        // cor das barras/linhas F1 (derivada do número pelo círculo cromático)
+      barsMode: 'complementar',   // 'complementar' | 'analoga' — como derivar a cor das barras
       waveform: null,             // array de até 56 picos 0..1, ou null (placeholder)
       isFollowerSuggestion: false,
       suggestionNumber: null,
@@ -2578,7 +2595,8 @@
         // injetado) + slides de texto em D3 (tipografia desregistrada, cujas
         // cores de "chapa" seguem a paleta da capa).
         const mis = state.principalMisreg || [state.accent, state.accent];
-        const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};`;
+        const bars = state.principalBars || deriveBars(mis[0], state.barsMode);
+        const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};--bars:${bars};`;
         return [
           buildSlide1(d, inkVars),
           buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
@@ -2819,7 +2837,7 @@
       state.principalMisreg = [c1, c2];
       els.misreg1.value = c1; els.misreg1Hex.textContent = c1.toUpperCase();
       els.misreg2.value = c2; els.misreg2Hex.textContent = c2.toUpperCase();
-      if (state.data) renderAll();
+      autoBars(); // barras acompanham a cor do número (faz o render)
     }
     function autoMisregFromCover() {
       if (!state.coverImage) return;
@@ -2833,6 +2851,22 @@
     function deriveMisreg2(hex) {
       const { h, s, l } = hexToHsl(hex);
       return hslToHex((h + 32) % 360, Math.max(38, s), Math.min(64, Math.max(46, l)));
+    }
+    /* Cor das barras/linhas (F1) derivada da cor do NÚMERO pelo círculo
+       cromático: complementar (oposto, +180°) ou análoga (vizinha, +34°). */
+    function deriveBars(numHex, mode) {
+      const { h } = hexToHsl(numHex);
+      const off = mode === 'analoga' ? 34 : 180;
+      return hslToHex((h + off) % 360, 58, 55);
+    }
+    function applyBars(hex) {
+      state.principalBars = hex;
+      if (els.barsColor) { els.barsColor.value = hex; els.barsHex.textContent = hex.toUpperCase(); }
+      if (state.data) renderAll();
+    }
+    function autoBars() {
+      const num = (state.principalMisreg && state.principalMisreg[0]) || state.accent;
+      applyBars(deriveBars(num, state.barsMode));
     }
     /* Aplica a desregistragem derivada do acento (número = acento, rótulo = 2ª
        cor). Usada quando o usuário muda o acento. */
@@ -2848,6 +2882,16 @@
     els.misregExtract.addEventListener('click', () => {
       if (!state.coverImage) { showMsg('carregue a capa antes de puxar as cores', 'error'); return; }
       autoMisregFromCover();
+    });
+    // barras: modo (complementar/análoga) re-deriva; seletor de cor = manual
+    els.barsMode.addEventListener('change', (e) => {
+      state.barsMode = e.target.value === 'analoga' ? 'analoga' : 'complementar';
+      autoBars();
+    });
+    els.barsColor.addEventListener('input', (e) => {
+      state.principalBars = e.target.value;
+      els.barsHex.textContent = e.target.value.toUpperCase();
+      if (state.data) renderAll();
     });
 
     els.curioFile.addEventListener('change', async (e) => {
