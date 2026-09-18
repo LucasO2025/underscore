@@ -917,6 +917,15 @@
     }
     .slide-f1 .body { left: 104px; right: 132px; top: 470px; bottom: 150px; z-index: 6; }
     .slide-f1 .top-row, .slide-f1 .foot-row { z-index: 7; }
+    /* sobreimpressão: onde o número cruza a barra, mostra a cor de mistura.
+       recorte na faixa exata da barra (top 150, altura 22), com uma cópia do
+       número alinhada. export-safe (sem blend). */
+    .slide-f1 .f1-cross { position: absolute; top: 150px; left: 0; right: 0; height: 22px; overflow: hidden; z-index: 5; }
+    .slide-f1 .f1-crossnum {
+      position: absolute; top: -38px; left: 52px;
+      font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 260px;
+      line-height: .8; letter-spacing: -.05em; color: var(--cross, var(--accent));
+    }
 
     /* ------- SLIDE 4 : CURIOSIDADE (NOTA TÉCNICA) -------
        Slide visual no padrão do hook: foto duotone em banda + waveform
@@ -2347,6 +2356,7 @@
           <div class="section-num">${sectionNum}</div>
         </div>
       </div>
+      <div class="f1-cross"><div class="f1-crossnum">${sectionNum}</div></div>
 
       <div class="f1-spine"></div>
       <div class="label-wrap">
@@ -2596,7 +2606,8 @@
         // cores de "chapa" seguem a paleta da capa).
         const mis = state.principalMisreg || [state.accent, state.accent];
         const bars = state.principalBars || deriveBars(mis[0], state.barsMode);
-        const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};--bars:${bars};`;
+        const cross = mixInk(mis[0], bars);
+        const inkVars = `--black:${principalInkFromAccent()};--misreg1:${mis[0]};--misreg2:${mis[1]};--bars:${bars};--cross:${cross};`;
         return [
           buildSlide1(d, inkVars),
           buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
@@ -2867,6 +2878,14 @@
     function autoBars() {
       const num = (state.principalMisreg && state.principalMisreg[0]) || state.accent;
       applyBars(deriveBars(num, state.barsMode));
+    }
+    /* Cor da SOBREIMPRESSÃO onde o número cruza a barra: mistura tipo tinta
+       (matiz entre as duas; para opostas exatas, puxa pro verde/quente). */
+    function mixInk(a, b) {
+      const A = hexToHsl(a), B = hexToHsl(b);
+      let d = ((B.h - A.h + 540) % 360) - 180;
+      const h = (A.h + (Math.abs(d) >= 179 ? 90 : d / 2) + 360) % 360;
+      return hslToHex(h, 62, 50);
     }
     /* Aplica a desregistragem derivada do acento (número = acento, rótulo = 2ª
        cor). Usada quando o usuário muda o acento. */
