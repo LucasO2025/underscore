@@ -595,7 +595,7 @@
       left: 0;
       width: 100%;
       height: 860px;
-      background-color: #050505;
+      background-color: var(--black);   /* "faixa" quando a capa quadrada não cobre tudo (zoom 100) */
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center 50%;
@@ -1196,7 +1196,9 @@
     .slide-5.slide-d5c .p-s5cover:active { cursor: grabbing; }
     .slide-5.slide-d5c .p-s5cut {
       position: absolute; top: 0; left: 0; right: 0; height: var(--s5h, 700px); z-index: 1; pointer-events: none;
-      background: linear-gradient(204deg, transparent 0 52%, var(--black) 60%);
+      /* corte NÍTIDO (transição ~1%): a versão suave deixava a capa vermelha
+         sangrar num risco diagonal cruzando o texto/espaço em branco. */
+      background: linear-gradient(204deg, transparent 0 53%, var(--black) 54%);
     }
     .slide-5.slide-d5c .p-s5cover2 {
       position: absolute; left: 0; right: 0; bottom: 0; height: var(--s5h2, 360px); z-index: 0;
@@ -1204,7 +1206,7 @@
     }
     .slide-5.slide-d5c .p-s5cut2 {
       position: absolute; left: 0; right: 0; bottom: 0; height: var(--s5h2, 360px); z-index: 1; pointer-events: none;
-      background: linear-gradient(156deg, var(--black) 0 56%, transparent 72%);
+      background: linear-gradient(156deg, var(--black) 0 57%, transparent 58%);
     }
     .slide-5.slide-d5c .p-s5botscrim {
       position: absolute; left: 0; right: 0; bottom: 0; height: 160px; z-index: 3; pointer-events: none;
@@ -1232,6 +1234,39 @@
       padding: 28px;
       background: var(--ui-surface);
       border: 1px solid var(--ui-border);
+    }
+
+    /* ---- OCR: importar texto de posts antigos (Tesseract.js, lazy) ---- */
+    .ocr-controls {
+      margin-bottom: 32px;
+      padding: 28px;
+      background: var(--ui-surface);
+      border: 1px solid var(--ui-border);
+    }
+    .ocr-controls .hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.1em; color: var(--ui-muted);
+      margin: 6px 0 16px; line-height: 1.5;
+    }
+    .ocr-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    .ocr-stage { margin-top: 16px; position: relative; width: max-content; max-width: 100%; }
+    .ocr-stage canvas {
+      display: block; max-width: 100%; border: 1px solid var(--ui-border);
+      cursor: crosshair; touch-action: none;
+    }
+    .ocr-hint2 {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; letter-spacing: 0.14em;
+      color: var(--ui-muted); margin-top: 6px; text-transform: uppercase;
+    }
+    .ocr-status {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.14em;
+      color: var(--ui-muted); margin: 14px 0 10px; min-height: 1em;
+    }
+    .ocr-controls textarea#ocr-result {
+      width: 100%; min-height: 140px; resize: vertical;
+      font-family: 'DM Sans', sans-serif; font-size: 0.95rem; line-height: 1.5;
+      padding: 12px; background: var(--ui-bg, #111); color: var(--off-white, #f4f1ea);
+      border: 1px solid var(--ui-border); margin-bottom: 10px;
     }
 
     .wave-controls .hint {
@@ -1756,6 +1791,29 @@
       </div>
     </section>
 
+    <section class="ocr-controls">
+      <div class="control-group">
+        <label>Importar texto de post antigo (OCR) — slides 2 e 3</label>
+        <p class="hint">
+          Suba a imagem do slide, arraste sobre o texto pra recortar a área e
+          clique em extrair. Roda 100% no seu navegador (Tesseract.js, baixado
+          só na 1ª vez — precisa de internet nela). Ideal pros slides de texto
+          (fundo escuro). Revise acentos e aspas no resultado.
+        </p>
+        <div class="ocr-row">
+          <input type="file" id="ocr-file" accept="image/*">
+          <button class="ghost small" id="ocr-run" type="button" disabled>extrair texto</button>
+        </div>
+        <div class="ocr-stage" id="ocr-stage" hidden>
+          <canvas id="ocr-canvas"></canvas>
+          <div class="ocr-hint2">arraste sobre o texto pra recortar</div>
+        </div>
+        <div class="ocr-status" id="ocr-status"></div>
+        <textarea id="ocr-result" placeholder="o texto extraído aparece aqui (editável) — copie pro campo interpretationA / interpretationB do seu JSON" spellcheck="true"></textarea>
+        <button class="ghost small" id="ocr-copy" type="button" disabled>copiar texto</button>
+      </div>
+    </section>
+
     <div id="messages"></div>
 
     <div class="action-bar">
@@ -1835,8 +1893,14 @@
       slide23Image: null,
       slide23DataUrl: null,
       slide23GrayUrl: null,
-      coverPhotoY: 50,            // recorte vertical (%) da capa do slide 1: 0=topo, 50=centro, 100=baixo
+      coverPhotoY: 0,             // posição vertical (%) da capa do slide 1: 0=topo (padrão: capa colada no topo, folga vai pro rodapé/hook), 50=centro, 100=baixo
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
+      // Zoom da capa (%) em background-size px = zoom/100*1080. 100 = capa
+      // quadrada inteira encaixada na largura (sem corte lateral); >100 amplia
+      // até cobrir (o "cover" antigo p/ quadrado = 125). Slide 1 nasce sem zoom;
+      // slide 4 mantém o cover atual por padrão.
+      slide1Zoom: 100,
+      curioZoom: 125,
       slide5PhotoY: 50,           // posição vertical (%) da capa no slide 5 indie (arrastável no preview)
       principalMisreg: null,      // [cor1, cor2] da paleta da capa pra desregistragem D3 (linha principal)
       principalBars: null,        // cor das barras/linhas F1 (derivada do número pelo círculo cromático)
@@ -2285,7 +2349,7 @@
       const c = d.slides.curiosity;
       const photo = state.curioDuotoneDataUrl || state.duotoneDataUrl;
       const photoStyle = photo
-        ? `background-image:url('${photo}');background-position:center ${state.curioPhotoY}%;`
+        ? `background-image:url('${photo}');background-position:center ${state.curioPhotoY}%;background-size:${Math.round(state.curioZoom / 100 * 1080)}px auto;`
         : '';
       const media = `<div class="curio-photo" style="${photoStyle}"></div>`;
 
@@ -2337,7 +2401,12 @@
         <span>${escapeHtml(String(d.year))}</span>
       </div>`;
 
-      const bgMarkup = `<div class="cover-img" style="background-image:url('${state.duotoneDataUrl}');background-position:center ${state.coverPhotoY}%;"></div>
+      // capa + camada de gradiente que dissolve a BASE da capa no preto (suaviza
+      // a emenda quando a quadrada não cobre tudo). O gradiente é dimensionado
+      // igual à imagem (zpx x zpx) e posicionado junto, então acompanha
+      // zoom/posição sozinho — sem JS. Fade nos últimos ~18% da capa.
+      const zpx = Math.round(state.slide1Zoom / 100 * 1080);
+      const bgMarkup = `<div class="cover-img" style="background-image:linear-gradient(to bottom, rgba(0,0,0,0) 82%, var(--black) 100%), url('${state.duotoneDataUrl}');background-position:center ${state.coverPhotoY}%;background-size:${zpx}px ${zpx}px, ${zpx}px auto;"></div>
       <div class="cover-fade"></div>`;
 
       return `
@@ -2668,11 +2737,17 @@
         const pickerColor = override || state.accent;
         // Recorte vertical: só os slides com foto (1 = capa, 4 = curiosidade).
         const cropY = i === 0 ? state.coverPhotoY : (i === 3 ? state.curioPhotoY : null);
+        const zoomVal = i === 0 ? state.slide1Zoom : (i === 3 ? state.curioZoom : null);
         const cropControl = cropY !== null ? `
       <div class="slide-crop">
-        <label>recorte vertical</label>
+        <label>posição vertical</label>
         <input type="range" data-crop-i="${i}" min="0" max="100" step="1" value="${cropY}">
         <span class="crop-val">${cropY}%</span>
+      </div>
+      <div class="slide-crop">
+        <label>zoom da capa (100 = quadrada inteira)</label>
+        <input type="range" data-zoom-i="${i}" min="100" max="220" step="1" value="${zoomVal}">
+        <span class="crop-val">${zoomVal}%</span>
       </div>` : (isIndie && i === 4 ? `
       <div class="slide-crop"><label>arraste a capa no preview pra posicionar ↕</label></div>` : (!isIndie && i === 4 ? `
       <div class="slide-crop"><label>capa: arraste no preview pra posicionar ↕</label></div>
@@ -2788,6 +2863,12 @@
       };
     }
 
+    /* Escala do export: renderiza o slide em 2x (2160x1350→2160x2700) pra
+       reduzir o ruído — o meio-tom/grão sai mais fino e sobrevive melhor à
+       recompressão do Instagram/TikTok. 2 equilibra nitidez x memória (o zip
+       do mobile renderiza os 5 de uma vez). */
+    const EXPORT_SCALE = 2;
+
     async function downloadSlidePng(i) {
       const stageEl = document.getElementById('stage-slide-' + i);
       if (!stageEl) return;
@@ -2797,7 +2878,7 @@
         const canvas = await html2canvas(stageEl.firstElementChild, {
           width: 1080, height: 1350,
           windowWidth: 1080, windowHeight: 1350,
-          scale: 1, useCORS: true, backgroundColor: null, logging: false,
+          scale: EXPORT_SCALE, useCORS: true, backgroundColor: null, logging: false,
         });
         ui.set('salvando…');
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -2817,7 +2898,7 @@
       const canvas = await html2canvas(stageEl.firstElementChild, {
         width: 1080, height: 1350,
         windowWidth: 1080, windowHeight: 1350,
-        scale: 1, useCORS: true, backgroundColor: null, logging: false,
+        scale: EXPORT_SCALE, useCORS: true, backgroundColor: null, logging: false,
       });
       return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     }
@@ -3002,6 +3083,27 @@
       const sel = i === 0 ? '.slide-1 .cover-img' : '.slide-curio .curio-photo';
       document.querySelectorAll(sel).forEach(el => {
         if (el.style.backgroundImage) el.style.backgroundPosition = `center ${v}%`;
+      });
+    });
+
+    /* Zoom da capa (slide 1 e slide 4): background-size em px. 100% = quadrada
+       inteira na largura; ampliar corta pra cobrir. Atualiza preview + stage ao
+       vivo, guarda no state pro export. */
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!(t && t.matches && t.matches('input[data-zoom-i]'))) return;
+      const i = parseInt(t.dataset.zoomI, 10);
+      const v = parseInt(t.value, 10);
+      if (i === 0) state.slide1Zoom = v;
+      else if (i === 3) state.curioZoom = v;
+      const valEl = t.parentElement.querySelector('.crop-val');
+      if (valEl) valEl.textContent = v + '%';
+      const px = Math.round(v / 100 * 1080);
+      const sel = i === 0 ? '.slide-1 .cover-img' : '.slide-curio .curio-photo';
+      // slide 1 tem 2 camadas (gradiente de dissolução + imagem); slide 4, só a imagem.
+      const size = i === 0 ? `${px}px ${px}px, ${px}px auto` : `${px}px auto`;
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.style.backgroundImage) el.style.backgroundSize = size;
       });
     });
 
@@ -3621,6 +3723,157 @@
     }
 
     document.getElementById('gen-reel').addEventListener('click', () => { generateReel(); });
+
+    /* =========================================================
+       OCR — importar texto de posts antigos (Tesseract.js, lazy-load)
+       Recupera o corpo dos slides de texto (2 e 3) sem refazer o JSON.
+       Roda 100% no navegador; o Tesseract só é baixado quando usado.
+       ========================================================= */
+    (function initOcr() {
+      const fileInput = document.getElementById('ocr-file');
+      const runBtn = document.getElementById('ocr-run');
+      const stageEl = document.getElementById('ocr-stage');
+      const canvas = document.getElementById('ocr-canvas');
+      const statusEl = document.getElementById('ocr-status');
+      const resultEl = document.getElementById('ocr-result');
+      const copyBtn = document.getElementById('ocr-copy');
+      if (!fileInput || !runBtn || !canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      let img = null, dispScale = 1, sel = null, drag = null, tessLoading = null;
+      const status = (m) => { statusEl.textContent = m || ''; };
+
+      function loadTesseract() {
+        if (window.Tesseract) return Promise.resolve();
+        if (tessLoading) return tessLoading;
+        tessLoading = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+          s.onload = () => resolve();
+          s.onerror = () => { tessLoading = null; reject(new Error('não consegui baixar o Tesseract.js (precisa de internet na 1ª vez)')); };
+          document.head.appendChild(s);
+        });
+        return tessLoading;
+      }
+
+      const norm = (s) => ({ x: Math.min(s.x, s.x + s.w), y: Math.min(s.y, s.y + s.h), w: Math.abs(s.w), h: Math.abs(s.h) });
+      function ptFromEvent(e) {
+        const r = canvas.getBoundingClientRect();
+        return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+      }
+      function draw() {
+        if (!img) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        if (sel) {
+          const { x, y, w, h } = norm(sel);
+          ctx.fillStyle = 'rgba(10,10,10,.6)';
+          ctx.fillRect(0, 0, canvas.width, y);
+          ctx.fillRect(0, y + h, canvas.width, canvas.height - (y + h));
+          ctx.fillRect(0, y, x, h);
+          ctx.fillRect(x + w, y, canvas.width - (x + w), h);
+          ctx.strokeStyle = '#e5544d'; ctx.lineWidth = 2;
+          ctx.strokeRect(x + 1, y + 1, Math.max(0, w - 2), Math.max(0, h - 2));
+        }
+      }
+
+      fileInput.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const im = new Image();
+        im.onload = () => {
+          img = im;
+          const dispW = Math.min(420, im.naturalWidth);
+          dispScale = dispW / im.naturalWidth;
+          canvas.width = Math.round(im.naturalWidth * dispScale);
+          canvas.height = Math.round(im.naturalHeight * dispScale);
+          sel = { x: canvas.width * 0.06, y: canvas.height * 0.34, w: canvas.width * 0.88, h: canvas.height * 0.42 };
+          stageEl.hidden = false; runBtn.disabled = false;
+          resultEl.value = ''; copyBtn.disabled = true;
+          status('arraste sobre o texto pra ajustar o recorte, depois "extrair texto".');
+          draw();
+        };
+        im.onerror = () => status('não consegui abrir essa imagem.');
+        im.src = URL.createObjectURL(f);
+      });
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (!img) return;
+        const p = ptFromEvent(e);
+        drag = { x: p.x, y: p.y }; sel = { x: p.x, y: p.y, w: 0, h: 0 };
+        if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
+        e.preventDefault(); draw();
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const p = ptFromEvent(e);
+        sel.w = p.x - drag.x; sel.h = p.y - drag.y; draw();
+      });
+      canvas.addEventListener('pointerup', () => { drag = null; });
+      canvas.addEventListener('pointercancel', () => { drag = null; });
+
+      function preprocess() {
+        let s = norm(sel);
+        if (s.w < 8 || s.h < 8) s = { x: 0, y: 0, w: canvas.width, h: canvas.height };
+        const sx = s.x / dispScale, sy = s.y / dispScale, sw = s.w / dispScale, sh = s.h / dispScale;
+        const scale = Math.max(1, Math.min(3, 1600 / Math.max(1, sw)));
+        const pc = document.createElement('canvas');
+        pc.width = Math.round(sw * scale); pc.height = Math.round(sh * scale);
+        const pctx = pc.getContext('2d');
+        pctx.drawImage(img, sx, sy, sw, sh, 0, 0, pc.width, pc.height);
+        const id = pctx.getImageData(0, 0, pc.width, pc.height), d = id.data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const invert = (sum / (d.length / 4)) < 128;    // fundo escuro -> inverte
+        for (let i = 0; i < d.length; i += 4) {
+          let g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          if (invert) g = 255 - g;
+          g = (g - 128) * 1.35 + 128;
+          g = g < 0 ? 0 : g > 255 ? 255 : g;
+          d[i] = d[i + 1] = d[i + 2] = g;
+        }
+        pctx.putImageData(id, 0, 0);
+        return pc;
+      }
+
+      function cleanOcr(text) {
+        const isChrome = (t) => t === 'underscore' || /^[_·•\s]*underscore/.test(t) || /^\d{4}$/.test(t) || /^\d{1,2}$/.test(t) || /^[_·•\s]+$/.test(t);
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l === '' || !isChrome(l.toLowerCase()));
+        const paras = []; let cur = [];
+        for (const l of lines) { if (l === '') { if (cur.length) { paras.push(cur.join(' ')); cur = []; } } else cur.push(l); }
+        if (cur.length) paras.push(cur.join(' '));
+        return paras.join('\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+      }
+
+      runBtn.addEventListener('click', async () => {
+        if (!img || !sel) return;
+        runBtn.disabled = true; copyBtn.disabled = true;
+        try {
+          status('carregando o motor de OCR…');
+          await loadTesseract();
+          const pc = preprocess();
+          status('reconhecendo texto… 0%');
+          const { data } = await Tesseract.recognize(pc, 'por', {
+            logger: m => { if (m.status === 'recognizing text') status('reconhecendo texto… ' + Math.round(m.progress * 100) + '%'); }
+          });
+          const cleaned = cleanOcr(data && data.text || '');
+          resultEl.value = cleaned;
+          copyBtn.disabled = !cleaned;
+          status(cleaned ? 'pronto — revise acentos/aspas e copie.' : 'não achei texto no recorte. ajuste a área e tente de novo.');
+        } catch (err) {
+          status('falha: ' + (err && err.message ? err.message : err));
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(resultEl.value);
+          else { resultEl.select(); document.execCommand('copy'); }
+          status('copiado.');
+        } catch (e) { status('não consegui copiar — selecione e copie manualmente.'); }
+      });
+    })();
 
     pingBackend();
   </script>
