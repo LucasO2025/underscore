@@ -1045,7 +1045,9 @@
 
     .slide-curio .wf-bar {
       width: 9px;
-      background: var(--accent);
+      /* cor do círculo cromático (mesma das barras/linhas F1), não mais o acento
+         extraído da capa. Cai no acento se --bars não estiver definido. */
+      background: var(--bars, var(--accent));
       display: block;
       flex: 0 0 auto;
     }
