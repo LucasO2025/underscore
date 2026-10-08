@@ -1772,6 +1772,20 @@
             <span class="hex-display" id="misreg2-hex">#E5544D</span>
             <button class="ghost small" id="misreg-extract" type="button">puxar da capa</button>
           </div>
+          <div class="color-row" style="margin-top:8px; flex-wrap:wrap;">
+            <label style="min-width:auto;">nº:</label>
+            <input type="text" id="misreg1-code" placeholder="#RRGGBB ou R,G,B" style="flex:1; min-width:110px;" spellcheck="false" autocapitalize="off">
+            <button class="ghost small" id="misreg1-code-apply" type="button">aplicar</button>
+            <button class="ghost small" id="misreg1-tone" type="button" aria-expanded="false">mais tons ▾</button>
+          </div>
+          <div class="tone-grid" id="misreg1-grid" hidden></div>
+          <div class="color-row" style="margin-top:8px; flex-wrap:wrap;">
+            <label style="min-width:auto;">rótulo:</label>
+            <input type="text" id="misreg2-code" placeholder="#RRGGBB ou R,G,B" style="flex:1; min-width:110px;" spellcheck="false" autocapitalize="off">
+            <button class="ghost small" id="misreg2-code-apply" type="button">aplicar</button>
+            <button class="ghost small" id="misreg2-tone" type="button" aria-expanded="false">mais tons ▾</button>
+          </div>
+          <div class="tone-grid" id="misreg2-grid" hidden></div>
         </div>
 
         <div class="control-group">
@@ -1784,6 +1798,12 @@
             <input type="color" id="bars-color" value="#30C0D0" title="cor das barras">
             <span class="hex-display" id="bars-hex">#30C0D0</span>
           </div>
+          <div class="color-row" style="margin-top:8px; flex-wrap:wrap;">
+            <input type="text" id="bars-code" placeholder="#RRGGBB ou R,G,B" style="flex:1; min-width:140px;" spellcheck="false" autocapitalize="off">
+            <button class="ghost small" id="bars-code-apply" type="button">aplicar código</button>
+            <button class="ghost small" id="bars-tone" type="button" aria-expanded="false">mais tons ▾</button>
+          </div>
+          <div class="tone-grid" id="bars-grid" hidden></div>
         </div>
 
         <div class="control-group">
@@ -3397,17 +3417,8 @@
       return null;
     }
 
-    function markActiveTone() {
-      const grid = document.getElementById('tone-grid');
-      if (!grid || !grid.dataset.built) return;
-      const cur = (state.accent || '').toLowerCase();
-      grid.querySelectorAll('button[data-tone]').forEach(b => {
-        b.classList.toggle('active', b.dataset.tone.toLowerCase() === cur);
-      });
-    }
-
-    function buildToneGrid() {
-      const grid = document.getElementById('tone-grid');
+    /* Monta a grade de ~177 tons dentro de um container (lazy, 1x por grade). */
+    function buildToneGridInto(grid) {
       if (!grid || grid.dataset.built) return;
       const cells = [];
       [98, 86, 74, 62, 50, 38, 26, 14, 6].forEach(l => cells.push(hslToHex(0, 0, l))); // neutros
@@ -3419,37 +3430,55 @@
       grid.dataset.built = '1';
     }
 
-    (function initTonePicker() {
-      const toggle = document.getElementById('tone-toggle');
-      const grid = document.getElementById('tone-grid');
-      const codeInput = document.getElementById('accent-code');
-      const codeApply = document.getElementById('accent-code-apply');
+    /* Liga seletor de tons (grade) + entrada por código (hex/RGB) a um controle
+       de cor qualquer. `apply(hex)` aplica a cor; `current()` dá a cor atual. */
+    function setupTonePicker({ toggleId, gridId, codeId, codeApplyId, apply, current }) {
+      const toggle = document.getElementById(toggleId);
+      const grid = document.getElementById(gridId);
+      const codeInput = codeId ? document.getElementById(codeId) : null;
+      const codeApply = codeApplyId ? document.getElementById(codeApplyId) : null;
+      function mark() {
+        if (!grid || !grid.dataset.built) return;
+        const cur = (current() || '').toLowerCase();
+        grid.querySelectorAll('button[data-tone]').forEach(b => b.classList.toggle('active', b.dataset.tone.toLowerCase() === cur));
+      }
       if (toggle && grid) toggle.addEventListener('click', () => {
-        buildToneGrid();
+        buildToneGridInto(grid);
         const show = grid.hidden;
         grid.hidden = !show;
         toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
         toggle.textContent = show ? 'menos tons ▴' : 'mais tons ▾';
-        if (show) markActiveTone();
+        if (show) mark();
       });
       if (grid) grid.addEventListener('click', (e) => {
         const b = e.target.closest('button[data-tone]');
         if (!b) return;
-        applyAccent(b.dataset.tone);
-        markActiveTone();
+        apply(b.dataset.tone);
+        mark();
         showMsg('cor aplicada: ' + b.dataset.tone.toUpperCase(), 'info', 1800);
       });
       function applyCode() {
         const hex = parseColorCode(codeInput.value);
         if (!hex) { showMsg('código inválido. use #RRGGBB (ou #RGB) ou R,G,B de 0 a 255.', 'error'); return; }
-        applyAccent(hex);
+        apply(hex);
         codeInput.value = hex.toUpperCase();
-        markActiveTone();
+        mark();
         showMsg('cor aplicada: ' + hex.toUpperCase(), 'info', 2000);
       }
       if (codeApply) codeApply.addEventListener('click', applyCode);
       if (codeInput) codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } });
-    })();
+    }
+
+    const _m0 = () => (state.principalMisreg && state.principalMisreg[0]) || state.accent;
+    const _m1 = () => (state.principalMisreg && state.principalMisreg[1]) || state.accent;
+    setupTonePicker({ toggleId: 'tone-toggle', gridId: 'tone-grid', codeId: 'accent-code', codeApplyId: 'accent-code-apply',
+      apply: hex => applyAccent(hex), current: () => state.accent });
+    setupTonePicker({ toggleId: 'misreg1-tone', gridId: 'misreg1-grid', codeId: 'misreg1-code', codeApplyId: 'misreg1-code-apply',
+      apply: hex => applyMisreg(hex, _m1()), current: () => state.principalMisreg && state.principalMisreg[0] });
+    setupTonePicker({ toggleId: 'misreg2-tone', gridId: 'misreg2-grid', codeId: 'misreg2-code', codeApplyId: 'misreg2-code-apply',
+      apply: hex => applyMisreg(_m0(), hex), current: () => state.principalMisreg && state.principalMisreg[1] });
+    setupTonePicker({ toggleId: 'bars-tone', gridId: 'bars-grid', codeId: 'bars-code', codeApplyId: 'bars-code-apply',
+      apply: hex => applyBars(hex), current: () => state.principalBars });
 
     els.generate.addEventListener('click', async () => {
       clearMsgs();
