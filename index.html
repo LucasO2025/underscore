@@ -201,6 +201,33 @@
 
     .palette-swatches:empty { display: none; }
 
+    /* Grade de MUITOS tons (seletor próprio, pra não depender dos poucos presets
+       do seletor nativo do sistema). Muitas cores x muitos tons; clicar aplica. */
+    .tone-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(22px, 1fr));
+      gap: 4px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 10px;
+      background: var(--ui-bg, #0f0f0f);
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+    }
+    .tone-grid[hidden] { display: none; }
+    .tone-grid .tone {
+      aspect-ratio: 1 / 1;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 0;
+      outline: 1px solid rgba(255,255,255,.06);
+      outline-offset: -1px;
+    }
+    .tone-grid .tone:hover { outline: 2px solid var(--off-white, #f4f1ea); outline-offset: 0; }
+    .tone-grid .tone.active { outline: 2px solid var(--accent, #e5544d); outline-offset: 0; }
+
     .swatch {
       display: inline-flex;
       align-items: center;
@@ -904,6 +931,18 @@
        espinha de accent na lateral do corpo. Herda a desregistragem e o
        meio-tom do D3. O corpo do texto não muda. */
     .slide-f1 .p-half { z-index: 0; }
+    /* marca d'água opcional dos slides 2/3 (principal): imagem fraca atrás do
+       texto + scrim radial na área de leitura. Split panorâmico via background-
+       position (esq no slide 2, dir no slide 3). Tratamento (duotone/pb/original/
+       suave) vem pronto na própria imagem (export-safe, sem filter CSS). */
+    .slide-f1 .f1-wm {
+      position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background-size: cover; background-repeat: no-repeat; opacity: .24;
+    }
+    .slide-f1 .f1-wmscrim {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(120% 56% at 42% 62%, rgba(0,0,0,.58) 0%, rgba(0,0,0,.42) 44%, rgba(0,0,0,0) 78%);
+    }
     .slide-f1 .f1-bar {
       position: absolute; top: 150px; left: 0; right: 0; height: 22px; background: var(--bars, var(--accent)); z-index: 2;
     }
@@ -1711,6 +1750,12 @@
             <span class="hex-display" id="hex-display">#E5544D</span>
             <button class="ghost small" id="auto-extract" type="button">extrair da capa</button>
           </div>
+          <div class="color-row" style="margin-top:8px; flex-wrap:wrap;">
+            <input type="text" id="accent-code" placeholder="#E5544D ou 229,84,77" style="flex:1; min-width:140px;" spellcheck="false" autocapitalize="off">
+            <button class="ghost small" id="accent-code-apply" type="button">aplicar código</button>
+            <button class="ghost small" id="tone-toggle" type="button" aria-expanded="false">mais tons ▾</button>
+          </div>
+          <div class="tone-grid" id="tone-grid" hidden></div>
           <div class="palette-swatches" id="palette-swatches"></div>
           <label class="check" style="margin-top:10px;">
             <input type="checkbox" id="cover-original">
@@ -1742,8 +1787,18 @@
         </div>
 
         <div class="control-group">
-          <label>Imagem dos slides 2 e 3 (marca d'água indie) — opcional, fallback: capa</label>
+          <label>Imagem dos slides 2 e 3 — opcional, fallback: capa</label>
           <input type="file" id="slide23-file" accept="image/*">
+          <div class="bars-row" style="margin-top:10px;">
+            <label style="min-width:auto;">marca d'água (principal):</label>
+            <select id="wm-mode" class="ghost" title="tratamento da imagem dos slides 2/3 na linha principal" style="cursor:pointer;">
+              <option value="nenhuma">nenhuma (limpo)</option>
+              <option value="duotone">tingida no acento</option>
+              <option value="pb">preto e branco</option>
+              <option value="original">cor original</option>
+              <option value="suave">cor original suavizada</option>
+            </select>
+          </div>
         </div>
 
         <div class="control-group">
@@ -1895,6 +1950,9 @@
       slide23Image: null,
       slide23DataUrl: null,
       slide23GrayUrl: null,
+      // Marca d'água dos slides 2/3 na linha PRINCIPAL (opcional): tratamento da
+      // imagem. 'nenhuma' = slides limpos (padrão). Outros: duotone/pb/original/suave.
+      principalWmMode: 'nenhuma',
       coverPhotoY: 0,             // posição vertical (%) da capa do slide 1: 0=topo (padrão: capa colada no topo, folga vai pro rodapé/hook), 50=centro, 100=baixo
       curioPhotoY: 50,            // recorte vertical (%) da foto do slide 4
       // Zoom da capa (%) em background-size px = zoom/100*1080. 100 = capa
@@ -2281,6 +2339,53 @@
       }
     }
 
+    /* Versão "suavizada" da imagem: dessatura parcialmente (mantém a cor, mais
+       discreta). Grayscale embutido via pixels (export-safe, igual indieGrayCover). */
+    function softenCover(img) {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1200;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      let id;
+      try { id = ctx.getImageData(0, 0, canvas.width, canvas.height); } catch (e) { return null; }
+      const d = id.data, sat = 0.55;
+      for (let i = 0; i < d.length; i += 4) {
+        const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        d[i] = g + (d[i] - g) * sat;
+        d[i + 1] = g + (d[i + 1] - g) * sat;
+        d[i + 2] = g + (d[i + 2] - g) * sat;
+      }
+      ctx.putImageData(id, 0, 0);
+      try { return canvas.toDataURL('image/jpeg', 0.9); } catch (e) { return null; }
+    }
+
+    /* URL da marca d'água dos slides 2/3 (linha PRINCIPAL), conforme o modo
+       escolhido. Fonte: imagem dedicada dos slides 2/3 (se houver) ou a capa.
+       Memoizado por (fonte|modo|acento) pra não reprocessar a cada render. */
+    let _wmMemo = { key: '', url: null };
+    function principalWmUrl() {
+      const mode = state.principalWmMode || 'nenhuma';
+      if (mode === 'nenhuma') return null;
+      const img = state.slide23Image || state.coverImage;
+      if (!img) return null;
+      const useS23 = !!state.slide23Image;
+      const sig = ((useS23 ? state.slide23DataUrl : state.coverDataUrl) || '').length; // muda quando a imagem troca
+      const key = (useS23 ? 's23' : 'cover') + '|' + mode + '|' + sig + '|' + (mode === 'duotone' ? state.accent : '');
+      if (_wmMemo.key === key && _wmMemo.url) return _wmMemo.url;
+      let url = null;
+      try {
+        if (mode === 'original') url = useS23 ? state.slide23DataUrl : state.coverDataUrl;
+        else if (mode === 'pb') url = useS23 ? (state.slide23GrayUrl || indieGrayCover(img)) : (state.coverGrayUrl || indieGrayCover(img));
+        else if (mode === 'suave') url = softenCover(img);
+        else if (mode === 'duotone') url = applyDuotone(img, '#0A0A0A', state.accent);
+      } catch (e) { url = null; }
+      _wmMemo = { key, url };
+      return url;
+    }
+
     /* =========================================================
        RENDER DOS SLIDES
        ========================================================= */
@@ -2431,14 +2536,19 @@
   `;
     }
 
-    function buildTextSlide(d, { sectionNum, label, body, slideIdx, inkVars }) {
+    function buildTextSlide(d, { sectionNum, label, body, slideIdx, inkVars, wmUrl, wmPos }) {
       // F1 · mobília Brody sobre texto intacto: número-forma gigante + barra
       // pesada + rótulo na vertical + espinha de accent, tudo com a
       // desregistragem (cores da capa) e o meio-tom da base D3. O CORPO do
-      // texto não muda em nada.
+      // texto não muda em nada. wmUrl = marca d'água opcional (imagem dos
+      // slides 2/3), com split panorâmico via wmPos (left/right).
       const lbl = escapeHtml(label);
+      const wm = wmUrl
+        ? `<div class="f1-wm" style="background-image:url('${wmUrl}');background-position:${wmPos || 'center'} center;"></div><div class="f1-wmscrim"></div>`
+        : '';
       return `
     <div class="slide slide-text slide-dark slide-d3 slide-f1" style="${slideStyleVars(slideIdx)}${inkVars || ''}">
+      ${wm}
       <div class="p-half"></div>
       <div class="f1-bar"></div>
       <div class="top-row">
@@ -2718,10 +2828,12 @@
         const inkVars = `--black:${principalInkFromAccent()};${inkBase}`;
         // slide 3 (ENTRELINHAS) um tom mais claro que o slide 2 — quebra o "paredão".
         const inkVars3 = `--black:${principalInkLight()};${inkBase}`;
+        // marca d'água opcional dos slides 2/3 (uma vez, com split panorâmico esq/dir)
+        const wmUrl = principalWmUrl();
         return [
           buildSlide1(d, inkVars),
-          buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars }),
-          buildTextSlide(d, { sectionNum: '02', label: 'ENTRELINHAS', body: d.slides.interpretationB, slideIdx: 2, inkVars: inkVars3 }),
+          buildTextSlide(d, { sectionNum: '01', label: 'INTERPRETAÇÃO', body: d.slides.interpretationA, slideIdx: 1, inkVars, wmUrl, wmPos: 'left' }),
+          buildTextSlide(d, { sectionNum: '02', label: 'ENTRELINHAS', body: d.slides.interpretationB, slideIdx: 2, inkVars: inkVars3, wmUrl, wmPos: 'right' }),
           buildCuriositySlide(d, inkVars),
           buildSlide5(d, inkVars),
         ];
@@ -3038,6 +3150,13 @@
       if (state.data) renderAll();
     });
 
+    // Tratamento da marca d'água dos slides 2/3 na linha principal.
+    const wmModeEl = document.getElementById('wm-mode');
+    if (wmModeEl) wmModeEl.addEventListener('change', (e) => {
+      state.principalWmMode = e.target.value;
+      if (state.data) renderAll();
+    });
+
     els.curioFile.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
@@ -3260,6 +3379,77 @@
       applyAccent(btn.dataset.swatch);
       showMsg(`cor aplicada: ${btn.dataset.swatch.toUpperCase()}`, 'info', 2500);
     });
+
+    /* ===== Seletor de TONS próprio + entrada por código (hex ou RGB) =====
+       Resolve a limitação do seletor nativo do sistema (poucos presets no mobile):
+       uma grade com muitas cores x muitos tons, e um campo pra digitar a cor. */
+    function parseColorCode(s) {
+      if (!s) return null;
+      s = String(s).trim().toLowerCase();
+      let m;
+      if (m = s.match(/^#?([0-9a-f]{6})$/)) return '#' + m[1];
+      if (m = s.match(/^#?([0-9a-f]{3})$/)) return '#' + m[1].split('').map(c => c + c).join('');
+      m = s.match(/(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/); // rgb(r,g,b) ou "r,g,b" ou "r g b"
+      if (m) {
+        const r = +m[1], g = +m[2], b = +m[3];
+        if ([r, g, b].every(v => v >= 0 && v <= 255)) return rgbToHex(r, g, b);
+      }
+      return null;
+    }
+
+    function markActiveTone() {
+      const grid = document.getElementById('tone-grid');
+      if (!grid || !grid.dataset.built) return;
+      const cur = (state.accent || '').toLowerCase();
+      grid.querySelectorAll('button[data-tone]').forEach(b => {
+        b.classList.toggle('active', b.dataset.tone.toLowerCase() === cur);
+      });
+    }
+
+    function buildToneGrid() {
+      const grid = document.getElementById('tone-grid');
+      if (!grid || grid.dataset.built) return;
+      const cells = [];
+      [98, 86, 74, 62, 50, 38, 26, 14, 6].forEach(l => cells.push(hslToHex(0, 0, l))); // neutros
+      const tones = [[82, 88], [78, 74], [85, 60], [88, 48], [80, 36], [72, 25], [60, 16]]; // [S,L] claro->escuro
+      for (let h = 0; h < 360; h += 15) tones.forEach(([s, l]) => cells.push(hslToHex(h, s, l))); // 24 matizes x 7 tons
+      grid.innerHTML = cells.map(hex =>
+        `<button type="button" class="tone" data-tone="${hex}" style="background:${hex}" title="${hex.toUpperCase()}"></button>`
+      ).join('');
+      grid.dataset.built = '1';
+    }
+
+    (function initTonePicker() {
+      const toggle = document.getElementById('tone-toggle');
+      const grid = document.getElementById('tone-grid');
+      const codeInput = document.getElementById('accent-code');
+      const codeApply = document.getElementById('accent-code-apply');
+      if (toggle && grid) toggle.addEventListener('click', () => {
+        buildToneGrid();
+        const show = grid.hidden;
+        grid.hidden = !show;
+        toggle.setAttribute('aria-expanded', show ? 'true' : 'false');
+        toggle.textContent = show ? 'menos tons ▴' : 'mais tons ▾';
+        if (show) markActiveTone();
+      });
+      if (grid) grid.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-tone]');
+        if (!b) return;
+        applyAccent(b.dataset.tone);
+        markActiveTone();
+        showMsg('cor aplicada: ' + b.dataset.tone.toUpperCase(), 'info', 1800);
+      });
+      function applyCode() {
+        const hex = parseColorCode(codeInput.value);
+        if (!hex) { showMsg('código inválido. use #RRGGBB (ou #RGB) ou R,G,B de 0 a 255.', 'error'); return; }
+        applyAccent(hex);
+        codeInput.value = hex.toUpperCase();
+        markActiveTone();
+        showMsg('cor aplicada: ' + hex.toUpperCase(), 'info', 2000);
+      }
+      if (codeApply) codeApply.addEventListener('click', applyCode);
+      if (codeInput) codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } });
+    })();
 
     els.generate.addEventListener('click', async () => {
       clearMsgs();
